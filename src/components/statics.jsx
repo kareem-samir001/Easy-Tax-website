@@ -1,5 +1,5 @@
 import { useState } from "react";
-function Statics({ title, value }) {
+function Statics({ title, value, valueColor }) {
     const [onHover, setOnHover] = useState(false);
     return (
         <div
@@ -17,10 +17,11 @@ function Statics({ title, value }) {
                 fontFamily: "cairo, sans-serif",
                 letterSpacing: "0.5px",
                borderColor: onHover ? "#22c97a" : "#333",
+               height: "50px",
             }}
         >
-            <h3 style={{ color: "#888", margin: "0", textAlign: "right" }}>{title}</h3>
-            <p style={{ color: "gray", margin: "0", textAlign: "right" }}>{value}</p>
+            <h3 style={{ color: "#888", margin: "0", textAlign: "right",fontSize:"14px" }}>{title}</h3>
+            <p style={{ color: valueColor || "gray", margin: "0", textAlign: "right" }}>{value}</p>
         </div>)
 
 }

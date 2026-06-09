@@ -47,6 +47,7 @@ function Storage() {
     const [unit, setUnit] = useState('')
     const [minimumQuantity, setMinimumQuantity] = useState('')
     const [showModal, setShowModal] = useState(false)
+    const [editIndex, setEditIndex] = useState(null)
 
     const addProduct = () => {
         if (!name || !quantity || !buyingPrice || !sellingPrice || !unit || !minimumQuantity) {
@@ -62,7 +63,15 @@ function Storage() {
             status: Number(quantity) < Number(minimumQuantity) ? 'ناقص' : 'كاف',
             unit
         }
-        const newProducts = [...products, newProduct]
+
+        let newProducts
+        if (editIndex !== null) {
+            newProducts = products.map((p, i) => i === editIndex ? newProduct : p)
+            setEditIndex(null)
+        } else {
+            newProducts = [...products, newProduct]
+        }
+
         setProducts(newProducts)
         localStorage.setItem('products', JSON.stringify(newProducts))
         setName(''); setQuantity(''); setBuyingPrice('')
@@ -78,26 +87,28 @@ function Storage() {
         setProducts(updatedProducts)
         localStorage.setItem('products', JSON.stringify(updatedProducts))
     }
+
     const modifyItem = (index) => {
         const p = products[index]
         setName(p.name);
         setQuantity(p.quantity);
-        setBuyingPrice(p.buyingPrice); 
+        setBuyingPrice(p.buyingPrice);
         setSellingPrice(p.sellingPrice);
-        setUnit(p.unit); 
+        setUnit(p.unit);
         setMinimumQuantity(p.minimumQuantity);
+        setEditIndex(index)
         setShowModal(true)
     }
+
     return (
         <>
-            {/* {Header} */}
-            <Header title="المخزن" buttonText="+ إضافة منتج" onButtonClick={() => setShowModal(true)} />
+            <Header title="المخزن" buttonText="+ إضافة منتج" onButtonClick={() => { setEditIndex(null); setShowModal(true) }} />
 
             {/* Stats */}
             <div style={{ display: "flex", gap: "16px", justifyContent: "space-around", width: "94%", margin: "20px auto", borderRadius: "12px" }}>
-                <Statics title="إجمالي المنتجات" value={products.length} />
-                <Statics title="إجمالي قيمة المخزن" value={totalValue.toLocaleString() + " جنيه"} />
-                <Statics title="منتجات قليلة" value={lowProducts} />
+                <Statics title="إجمالي المنتجات" value={products.length} valueColor={"white"}/>
+                <Statics title="إجمالي قيمة المخزن" value={totalValue.toLocaleString() + " جنيه"} valueColor={"white"} />
+               <Statics title="منتجات قليلة" value={lowProducts} valueColor={lowProducts > 0 ? "#cb6262" : "gray"} />
             </div>
 
             {/* Table */}
@@ -110,12 +121,11 @@ function Storage() {
                             ))}
                             <th style={thStyles}></th>
                         </tr>
-
                     </thead>
                     <tbody>
                         {products.length === 0 ? (
                             <tr>
-                                <td colSpan="8" style={{ textAlign: "center", padding: "60px", color: "#5a5a5a", fontFamily: "cairo, sans-serif", fontSize: "18px" }}>
+                                <td colSpan="9" style={{ textAlign: "center", padding: "60px", color: "#5a5a5a", fontFamily: "cairo, sans-serif", fontSize: "18px" }}>
                                     لا توجد منتجات بعد — أضف منتجك الأول!
                                 </td>
                             </tr>
@@ -137,15 +147,23 @@ function Storage() {
                                 </td>
                                 <td style={generalStyles}>
                                     <button style={{
-                                        backgroundColor: "#b1f6c1", color: "black", border: "none",
-                                        padding: "8px 16px", borderRadius: "4px", fontSize: "15px", cursor: "pointer",marginLeft:"20px"
-                                    }} onClick={() => modifyItem(i)}>
+                                        backgroundColor: "#1e1e1e", color: "#a0a0a0",
+                                        border: "1px solid #ffffff22", borderRadius: "8px",
+                                        padding: "8px 16px", cursor: "pointer",
+                                        fontFamily: "cairo, sans-serif", fontSize: "13px", fontWeight: "600", marginLeft: "8px"
+                                    }} onClick={() => modifyItem(i)}
+                                        onMouseEnter={(e) => { e.target.style.backgroundColor = "#000000"; e.target.style.color = "white" }}
+                                        onMouseLeave={(e) => { e.target.style.backgroundColor = "#1e1e1e"; e.target.style.color = "#a0a0a0" }}>
                                         تعديل
                                     </button>
                                     <button style={{
-                                        backgroundColor: "#e05555", color: "white", border: "none",
-                                        padding: "8px 16px", borderRadius: "4px", fontSize: "15px", cursor: "pointer"
-                                    }} onClick={() => deleteItem(i)}>
+                                        backgroundColor: "#1e1e1e", color: "#a0a0a0",
+                                        border: "1px solid #ffffff22", borderRadius: "8px",
+                                        padding: "8px 16px", cursor: "pointer",
+                                        fontFamily: "cairo, sans-serif", fontSize: "13px", fontWeight: "600"
+                                    }} onClick={() => deleteItem(i)}
+                                        onMouseEnter={(e) => { e.target.style.backgroundColor = "#e05555"; e.target.style.color = "white" }}
+                                        onMouseLeave={(e) => { e.target.style.backgroundColor = "#1e1e1e"; e.target.style.color = "#a0a0a0" }}>
                                         حذف
                                     </button>
                                 </td>
@@ -166,7 +184,9 @@ function Storage() {
                         width: "460px", maxWidth: "90vw", border: "1px solid #222",
                         display: "grid", gap: "14px", gridTemplateColumns: "1fr 1fr"
                     }}>
-                        <h3 style={{ color: "white", gridColumn: "1 / -1", textAlign: "right", margin: 0, fontFamily: "cairo, sans-serif" }}>إضافة منتج جديد</h3>
+                        <h3 style={{ color: "white", gridColumn: "1 / -1", textAlign: "right", margin: 0, fontFamily: "cairo, sans-serif" }}>
+                            {editIndex !== null ? 'تعديل منتج' : 'إضافة منتج جديد'}
+                        </h3>
 
                         {[
                             { label: "اسم المنتج", val: name, set: setName, type: "text", ph: "مثال: أرز، سكر..." },
@@ -186,11 +206,13 @@ function Storage() {
                             <button style={{
                                 backgroundColor: "#1e1e1e", color: "#aaa", padding: "10px 20px",
                                 border: "1px solid #333", borderRadius: "8px", cursor: "pointer", fontFamily: "cairo, sans-serif"
-                            }} onClick={() => setShowModal(false)}>إلغاء</button>
+                            }} onClick={() => { setShowModal(false); setEditIndex(null) }}>إلغاء</button>
                             <button style={{
                                 backgroundColor: buttonColor, color: "#000", padding: "10px 24px",
                                 border: "none", borderRadius: "8px", cursor: "pointer", fontFamily: "cairo, sans-serif", fontWeight: "700"
-                            }} onClick={addProduct}>إضافة المنتج</button>
+                            }} onClick={addProduct}>
+                                {editIndex !== null ? 'حفظ التعديلات' : 'إضافة المنتج'}
+                            </button>
                         </div>
                     </div>
                 </div>
