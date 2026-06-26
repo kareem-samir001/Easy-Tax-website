@@ -14,7 +14,6 @@ import { TijaraProvider } from './context/TijaraContext'
 import { Toaster } from 'react-hot-toast'
 
 function App() {
-  const [activePage, setActivePage] = useState('Storage')
   const [loggedIn, setLoggedIn] = useState(false)
   const [authPage, setAuthPage] = useState('signup')
   const [userData, setUserData] = useState(null)

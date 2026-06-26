@@ -1,8 +1,10 @@
-import React, { createContext, useReducer, useEffect, useContext } from 'react';
+import { createContext, useReducer, useEffect, useContext } from 'react';
 import { dataAPI } from '../api';
 import toast from 'react-hot-toast';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const TijaraContext = createContext();
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTijara = () => useContext(TijaraContext);
 
 const initialState = {
@@ -44,6 +46,13 @@ function reducer(state, action) {
       };
     case 'ADD_SALE':
       return { ...state, sales: [...state.sales, action.payload] };
+    case 'ADD_EXPENSE':
+      return { ...state, expenses: [...state.expenses, action.payload] };
+    case 'DELETE_EXPENSE':
+      return {
+        ...state,
+        expenses: state.expenses.filter((e) => e.id !== action.payload),
+      };
     default:
       return state;
   }
@@ -134,6 +143,28 @@ export const TijaraProvider = ({ children }) => {
     }
   };
 
+  const addExpense = async (expenseData) => {
+    try {
+      const newExpense = await dataAPI.addExpense(expenseData);
+      dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
+      toast.success('تمت إضافة المصروف بنجاح');
+    } catch (err) {
+      console.error(err);
+      toast.error('خطأ في إضافة المصروف');
+    }
+  };
+
+  const deleteExpense = async (id) => {
+    try {
+      await dataAPI.deleteExpense(id);
+      dispatch({ type: 'DELETE_EXPENSE', payload: id });
+      toast.success('تم حذف المصروف بنجاح');
+    } catch (err) {
+      console.error(err);
+      toast.error('خطأ في حذف المصروف');
+    }
+  };
+
   return (
     <TijaraContext.Provider value={{
       state,
@@ -142,7 +173,9 @@ export const TijaraProvider = ({ children }) => {
       addProduct,
       updateProduct,
       deleteProduct,
-      addSale
+      addSale,
+      addExpense,
+      deleteExpense
     }}>
       {children}
     </TijaraContext.Provider>

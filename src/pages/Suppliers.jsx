@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Header from '../components/Header';
-import Statics from '../components/statics';
-import { thStyles, generalStyles, inputStyle, buttonColor } from "./storageStyles";
+import { inputStyle, buttonColor } from "./storageStyles";
 
 function Suppliers() {
     const [showModal, setShowModal] = useState(false);
-    const [shipments, setShipments] = useState([]);
+    const [shipments, setShipments] = useState(() => {
+        const storedShipments = localStorage.getItem('shipments');
+        return storedShipments ? JSON.parse(storedShipments) : [];
+    });
     const [editId, setEditId] = useState(null);
     const [hoveredRowId, setHoveredRowId] = useState(null); // لتأثير الـ Hover على الصفوف
 
@@ -17,14 +19,6 @@ function Suppliers() {
     const [date, setDate] = useState('');
     const [unitPrice, setUnitPrice] = useState(0);
     const [notes, setNotes] = useState('');
-
-    // تحميل الشحنات من localStorage عند فتح الصفحة
-    useEffect(() => {
-        const storedShipments = localStorage.getItem('shipments');
-        if (storedShipments) {
-            setShipments(JSON.parse(storedShipments));
-        }
-    }, []);
 
     const resetForm = () => {
         setSupplierName('');

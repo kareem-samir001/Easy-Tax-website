@@ -20,12 +20,12 @@ async function fetchWithAuth(url, options = {}) {
   });
 
   if (!response.ok) {
-    let errorMsg = 'Network response was not ok';
+    let errorMsg;
     try {
       const errorData = await response.json();
       errorMsg = errorData.message || JSON.stringify(errorData);
-    } catch (e) {
-      errorMsg = response.statusText;
+    } catch {
+      errorMsg = response.statusText || 'Network response was not ok';
     }
     throw new Error(errorMsg);
   }

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { authAPI } from "../api";
-import { CiUser, CiMail, CiLock } from "react-icons/ci";
+import { CiMail, CiLock } from "react-icons/ci";
 import "./SignUp.css"; 
 
 function LogIn({ setLoggedIn, setAuthPage, setUserData }) {

@@ -1,6 +1,6 @@
-import React, { useContext, useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import './Dashboard.css';
-import { MdWarningAmber, MdShoppingCart, MdArrowBack } from 'react-icons/md';
+import { MdShoppingCart, MdArrowBack } from 'react-icons/md';
 import { Link } from 'react-router-dom';
 import { TijaraContext } from '../context/TijaraContext';
 

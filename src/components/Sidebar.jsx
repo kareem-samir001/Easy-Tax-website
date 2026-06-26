@@ -1,37 +1,28 @@
-import { useState, useEffect } from "react"
+import { useMemo } from "react"
 import {
     MdHome,
     MdShoppingCart,
     MdInventory,
     MdAccountBalanceWallet,
     MdHandshake,
-    MdBarChart,
-    MdAssignment,
     MdLocalShipping
 } from "react-icons/md";
-import { CiClock2 } from "react-icons/ci";
-import { auth, db } from "../firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTijara } from '../context/TijaraContext';
 
 
 
-function Sidebar({ userData }) {
-    const [lowProducts, setLowProducts] = useState(0)
+function Sidebar() {
     const navigate = useNavigate()
     const location = useLocation()
+    
+    const { state } = useTijara();
+    const { products } = state;
 
-    useEffect(() => {
-        const fetchLowProducts = async () => {
-            try {
-                const items = await dataAPI.getProducts();
-                setLowProducts(items.filter(p => p.status === 'ناقص').length);
-            } catch (err) {
-                console.error(err);
-            }
-        };
-        fetchLowProducts();
-    }, [])
+    const lowProducts = useMemo(() => {
+        if (!products) return 0;
+        return products.filter(p => (p.quantity || 0) < (p.minimumQuantity || 0)).length;
+    }, [products]);
 
     const navItem = (label, path, icon, badge) => (
         <button onClick={() => {
@@ -77,7 +68,7 @@ function Sidebar({ userData }) {
                     </p>
                 </div> */}
                <img 
-                    src="public/Logo.png"
+                    src="/Logo.png"
                     alt="Logo" 
                     style={{ 
                         width: "70px", 

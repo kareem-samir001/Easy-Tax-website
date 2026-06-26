@@ -1,59 +1,31 @@
 import Header from "../components/Header";
 import Statics from "../components/statics";
-import { useState, useEffect } from "react";
-import { dataAPI } from "../api";
+import { useState, useMemo } from "react";
+import { useTijara } from "../context/TijaraContext";
 
 function Expenses() {
     const [expenseTitle, setExpenseTitle] = useState('')
     const [expenseAmount, setExpenseAmount] = useState('')
     const [expenseType, setExpenseType] = useState('')
     const [expenseDate, setExpenseDate] = useState('')
-    const [showModal, setShowModal] = useState(false)
-    const [expenses, setExpenses] = useState([])
-    const [products, setProducts] = useState([])
-    const [monthlyRevenue, setMonthlyRevenue] = useState(0)
 
-    const fetchExpenses = async () => {
-        try {
-            const items = await dataAPI.getExpenses();
-            setExpenses(items || []);
-        } catch (err) {
-            console.error(err);
-        }
-    };
+    const { state, addExpense: contextAddExpense, deleteExpense: contextDeleteExpense } = useTijara();
+    const { expenses, sales, isLoading, error } = state;
 
-    useEffect(() => {
-        fetchExpenses();
-    }, [])
-
-    const fetchProductsAndSales = async () => {
-        try {
-            const [productsData, salesData] = await Promise.all([
-                dataAPI.getProducts(),
-                dataAPI.getSales()
-            ]);
-            setProducts(productsData || []);
-
-            const currentMonth = new Date().toISOString().slice(0, 7);
-            const total = (salesData || []).reduce((sum, sale) => {
-                const saleDate = sale.date || new Date(sale.created_at).toISOString().split('T')[0];
-                if (saleDate.startsWith(currentMonth)) {
-                    return sum + (sale.revenue || 0);
-                }
-                return sum;
-            }, 0);
-            setMonthlyRevenue(total);
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    useEffect(() => {
-        fetchProductsAndSales();
-    }, [])
+    const monthlyRevenue = useMemo(() => {
+        if (!sales) return 0;
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        return sales.reduce((sum, sale) => {
+            const saleDate = sale.date || (sale.created_at ? new Date(sale.created_at).toISOString().split('T')[0] : '');
+            if (saleDate.startsWith(currentMonth)) {
+                return sum + (sale.revenue || 0);
+            }
+            return sum;
+        }, 0);
+    }, [sales]);
 
     // function to add new expense to Xano
-    const addExpense = async () => {
+    const handleAddExpense = async () => {
         if (!expenseTitle || !expenseAmount || !expenseType || !expenseDate) {
             alert('يرجى ملء جميع الحقول')
             return
@@ -66,25 +38,31 @@ function Expenses() {
             date: expenseDate
         }
         
-        try {
-            await dataAPI.addExpense(newExpense);
-            fetchExpenses();
-        } catch (err) {
-            console.error("Error adding expense:", err);
-        }
+        await contextAddExpense(newExpense);
 
-        setExpenseTitle(''); setExpenseAmount(''); setExpenseType('')
+        setExpenseTitle(''); setExpenseAmount(''); setExpenseType('');
         setExpenseDate('');
     }
 
     // function to delete expense from Xano
-    const deleteExpense = async (id) => {
-        try {
-            await dataAPI.deleteExpense(id);
-            fetchExpenses();
-        } catch (err) {
-            console.error("Error deleting expense:", err);
-        }
+    const handleDeleteExpense = async (id) => {
+        await contextDeleteExpense(id);
+    }
+
+    if (isLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', width: '100%' }}>
+                <div style={{ color: '#22c97a', fontSize: '24px', fontFamily: 'cairo, sans-serif' }}>جاري التحميل...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', width: '100%' }}>
+                <div style={{ color: '#ef4444', fontSize: '20px', fontFamily: 'cairo, sans-serif' }}>حدث خطأ: {error}</div>
+            </div>
+        );
     }
 
     return (<>
@@ -93,9 +71,9 @@ function Expenses() {
 
         {/* Stats */}
         <div style={{ display: "flex", gap: "16px", justifyContent: "space-around", width: "94%", margin: "20px auto", borderRadius: "12px" }}>
-            <Statics title=" مصروفات هذا الشهر" value={expenses.reduce((sum, expense) => sum + expense.amount, 0) + " جنيه"} valueColor={"white"} />
+            <Statics title=" مصروفات هذا الشهر" value={(expenses || []).reduce((sum, expense) => sum + expense.amount, 0) + " جنيه"} valueColor={"white"} />
             <Statics title="  ايرادات الشهر" value={monthlyRevenue.toLocaleString() + " جنيه"} valueColor={"white"} />
-            <Statics title=" صافي الربح بعد المصروفات" value={(monthlyRevenue - expenses.reduce((sum, expense) => sum + expense.amount, 0)).toLocaleString() + " جنيه"} valueColor={"white"} />
+            <Statics title=" صافي الربح بعد المصروفات" value={(monthlyRevenue - (expenses || []).reduce((sum, expense) => sum + expense.amount, 0)).toLocaleString() + " جنيه"} valueColor={"white"} />
         </div>
         {/* form */}
         <div style={{
@@ -141,13 +119,13 @@ function Expenses() {
                     <input value={expenseDate} onChange={e => setExpenseDate(e.target.value)} type="date" style={{ padding: "12px", borderRadius: "8px", border: "1px solid #333", backgroundColor: "#202020", color: "#888", height: "45px", fontSize: "20px" }} />
                 </div>
 
-                <button onClick={addExpense} style={{ gridColumn: "1 / -1", padding: "12px", borderRadius: "8px", border: "none", backgroundColor: "#22c97a", color: "#111", fontWeight: "600", height: "50px", fontSize: "20px" }}>إضافة مصروف</button>
+                <button onClick={handleAddExpense} style={{ gridColumn: "1 / -1", padding: "12px", borderRadius: "8px", border: "none", backgroundColor: "#22c97a", color: "#111", fontWeight: "600", height: "50px", fontSize: "20px" }}>إضافة مصروف</button>
             </div>
             {/* Expenses List */}
             <div style={{ width: "70%", margin: "20px 20px", borderRadius: "12px", padding: "24px", backgroundColor: "#171717", border: "1px solid #333" }}>
                 <h2 style={{ color: "white", textAlign: "right", fontSize: "20px" }}>المصروفات</h2>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                    {expenses.length === 0 ? (
+                    {(!expenses || expenses.length === 0) ? (
                         <p style={{ color: "#555", textAlign: "center", marginTop: "40px" }}>لا توجد مصروفات بعد</p>
                     ) : (
                         expenses.map((expense) => (
@@ -159,7 +137,7 @@ function Expenses() {
                                 borderBottom: "1px solid #2a2a2a",
                                 flexDirection: "row-reverse",
                             }}>
-                                <button style={{ backgroundColor: "#e05555", color: "white", border: "none", padding: "8px 16px", borderRadius: "4px", fontSize: "20px" }} onClick={() => deleteExpense(expense.id)}>
+                                <button style={{ backgroundColor: "#e05555", color: "white", border: "none", padding: "8px 16px", borderRadius: "4px", fontSize: "20px" }} onClick={() => handleDeleteExpense(expense.id)}>
                                     حذف
                                 </button>
                                 <span style={{ color: "#e05555", fontWeight: "600", fontSize: "16px" }}>
