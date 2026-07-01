@@ -24,7 +24,9 @@ function App() {
       const token = localStorage.getItem('authToken');
       if (token) {
         try {
-          const user = await authAPI.me();
+          const res = await authAPI.me();
+          console.log('me() response:', res); 
+          const user = res?.user || res;
           setUserData(user);
           setLoggedIn(true);
         } catch (error) {

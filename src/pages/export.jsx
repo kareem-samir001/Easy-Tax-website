@@ -1,8 +1,109 @@
 import { createPortal } from "react-dom";
 import { useState } from "react";
+import { dataAPI } from "../api";
+import toast from "react-hot-toast";
+
+// 📥 دالة مساعدة لتنزيل أي محتوى كملف على جهاز المستخدم
+function downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// 🧾 تحويل مصفوفة objects لصيغة CSV سطر عناوين + سطور بيانات
+function arrayToCSV(rows) {
+    // 🛡️ حماية: لو البيانات مش Array فعلاً (مثلاً غلاف {data: [...]}) بنفكها بأمان
+    if (rows && !Array.isArray(rows)) {
+        if (Array.isArray(rows.data)) {
+            rows = rows.data;
+        } else {
+            const values = Object.values(rows);
+            const foundArray = values.find(v => Array.isArray(v));
+            rows = foundArray || [];
+        }
+    }
+    if (!rows || rows.length === 0) return "";
+    const headers = Object.keys(rows[0] || {});
+    const escapeCell = (val) => {
+        if (val === null || val === undefined) return "";
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+    };
+    const headerLine = headers.map(escapeCell).join(",");
+    const dataLines = rows.map(row => headers.map(h => escapeCell(row[h])).join(","));
+    return [headerLine, ...dataLines].join("\r\n");
+}
+
 function Export({ onClose }) {
     const [isFirstButtonHovered, setIsFirstButtonHovered] = useState(false);
     const [isSecondButtonHovered, setIsSecondButtonHovered] = useState(false);
+    const [loadingCSV, setLoadingCSV] = useState(false);
+    const [loadingJSON, setLoadingJSON] = useState(false);
+
+    // 🗃️ جلب كل بيانات البيزنس من الـ API مرة واحدة
+    const fetchAllData = async () => {
+        const [products, sales, expenses, suppliers] = await Promise.all([
+            dataAPI.getProducts(),
+            dataAPI.getSales(),
+            dataAPI.getExpenses(),
+            dataAPI.getSuppliers(),
+        ]);
+        return { products, sales, expenses, suppliers };
+    };
+
+    const handleExportCSV = async () => {
+        setLoadingCSV(true);
+        try {
+            const { products, sales, expenses, suppliers } = await fetchAllData();
+
+            // كل قسم بياناته بيتحط تحت عنوان واضح داخل نفس ملف الـ CSV
+            const sections = [
+                { title: "المنتجات", rows: products },
+                { title: "المبيعات", rows: sales },
+                { title: "المصروفات", rows: expenses },
+                { title: "الموردون", rows: suppliers },
+            ];
+
+            const csvParts = sections.map(({ title, rows }) => {
+                const csv = arrayToCSV(rows);
+                return `${title}\r\n${csv || "لا توجد بيانات"}`;
+            });
+
+            // \uFEFF في الأول عشان Excel يقرأ الحروف العربية صح (UTF-8 BOM)
+            const fullCSV = "\uFEFF" + csvParts.join("\r\n\r\n");
+            const dateStr = new Date().toISOString().split("T")[0];
+            downloadFile(fullCSV, `بيانات-البيزنس-${dateStr}.csv`, "text/csv;charset=utf-8;");
+            toast.success("تم تحميل الملف بنجاح");
+        } catch (error) {
+            console.error("CSV export failed:", error);
+            console.error("تفاصيل الخطأ:", error.message);
+            toast.error("حصل خطأ أثناء تصدير البيانات: " + error.message);
+        } finally {
+            setLoadingCSV(false);
+        }
+    };
+
+    const handleExportJSON = async () => {
+        setLoadingJSON(true);
+        try {
+            const data = await fetchAllData();
+            const jsonStr = JSON.stringify(data, null, 2);
+            const dateStr = new Date().toISOString().split("T")[0];
+            downloadFile(jsonStr, `نسخة-احتياطية-${dateStr}.json`, "application/json;charset=utf-8;");
+            toast.success("تم تحميل النسخة الاحتياطية بنجاح");
+        } catch (error) {
+            console.error("JSON export failed:", error);
+            toast.error("حصل خطأ أثناء تصدير البيانات");
+        } finally {
+            setLoadingJSON(false);
+        }
+    };
 
     return createPortal(
         <>
@@ -78,17 +179,19 @@ function Export({ onClose }) {
                             </div>
                         </div>
                     </div>
-                    <button style={{
-                        background: "#22c97a", color: "#000",
-                        border: "none", borderRadius: "8px",
-                        padding: "8px 14px", cursor: "pointer",
-                        fontFamily: "cairo, sans-serif", fontSize: "12px", fontWeight: "700",
-                        background: isFirstButtonHovered ? "#19985d" : "#28d085" 
-
-                    }}
+                    <button
+                        disabled={loadingCSV}
+                        onClick={handleExportCSV}
+                        style={{
+                            background: loadingCSV ? "#555" : (isFirstButtonHovered ? "#19985d" : "#28d085"),
+                            color: "#000",
+                            border: "none", borderRadius: "8px",
+                            padding: "8px 14px", cursor: loadingCSV ? "not-allowed" : "pointer",
+                            fontFamily: "cairo, sans-serif", fontSize: "12px", fontWeight: "700",
+                        }}
                         onMouseEnter={() => setIsFirstButtonHovered(true)}
                         onMouseLeave={() => setIsFirstButtonHovered(false)}>
-                        تحميل
+                        {loadingCSV ? "جاري التحميل..." : "تحميل"}
                     </button>
                 </div>
 
@@ -114,16 +217,19 @@ function Export({ onClose }) {
                             </div>
                         </div>
                     </div>
-                    <button style={{
-                        background: "#4ea8f5", color: "#000",
-                        border: "none", borderRadius: "8px",
-                        padding: "8px 14px", cursor: "pointer",
-                        fontFamily: "cairo, sans-serif", fontSize: "12px", fontWeight: "700",
-                        background: isSecondButtonHovered ? "#3573a9" : "#4ea8f5"
-                    }}
+                    <button
+                        disabled={loadingJSON}
+                        onClick={handleExportJSON}
+                        style={{
+                            background: loadingJSON ? "#555" : (isSecondButtonHovered ? "#3573a9" : "#4ea8f5"),
+                            color: "#000",
+                            border: "none", borderRadius: "8px",
+                            padding: "8px 14px", cursor: loadingJSON ? "not-allowed" : "pointer",
+                            fontFamily: "cairo, sans-serif", fontSize: "12px", fontWeight: "700",
+                        }}
                         onMouseEnter={() => setIsSecondButtonHovered(true)}
                         onMouseLeave={() => setIsSecondButtonHovered(false)}>
-                        تحميل
+                        {loadingJSON ? "جاري التحميل..." : "تحميل"}
                     </button>
                 </div>
             </div>

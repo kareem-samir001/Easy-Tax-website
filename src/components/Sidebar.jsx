@@ -9,6 +9,7 @@ import Export from "../pages/export";
 import Plans from "../pages/Plans";
 import LogOutModal from "../pages/logOutpage";
 
+
 function Sidebar({ userData, onLogout }) {
     const [showSettings, setShowSettings] = useState(false);
     const [showExport, setShowExport] = useState(false);
@@ -194,11 +195,11 @@ function Sidebar({ userData, onLogout }) {
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: "12px", fontWeight: "800", color: "#22c97a", flexShrink: 0
                     }}>
-                        {userData?.fullName?.charAt(0) || "؟"}
+                       {userData?.fullName?.charAt(0) || userData?.name?.charAt(0) || "؟"}
                     </div>
                     <div style={{ flex: 1, textAlign: "right" }}>
                         <div style={{ fontSize: "12px", fontWeight: "700", color: "#f2f2f2" }}>
-                            {userData?.fullName || "المستخدم"}
+                         {userData?.fullName || userData?.name || "المستخدم"}
                         </div>
                         <div style={{ fontSize: "10px", color: "#555" }}>صاحب البيزنس</div>
                     </div>
