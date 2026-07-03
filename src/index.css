@@ -28,7 +28,32 @@
   @media (max-width: 1024px) {
     font-size: 16px;
   }
+
+  /* ── Tijara Design System Variables ── */
+  --bg0: #0a0a0a;
+  --bg1: #111111;
+  --bg2: #191919;
+  --bg3: #222222;
+  --bg4: #2a2a2a;
+  --border2: #ffffff1e;
+  --text1: #f0f0f0;
+  --text2: #909090;
+  --text3: #505050;
+  --green:        #1fd97a;
+  --green-dim:    #18b366;
+  --green-bg:     #1fd97a12;
+  --green-border: #1fd97a28;
+  --red:        #f05c5c;
+  --red-bg:     #f05c5c12;
+  --red-border: #f05c5c28;
+  --amber:    #f5a623;
+  --amber-bg: #f5a62312;
+  --blue:    #4ea8f5;
+  --blue-bg: #4ea8f512;
+  --purple:    #a78bfa;
+  --purple-bg: #a78bfa12;
 }
+
 
 @media (prefers-color-scheme: dark) {
   :root {
