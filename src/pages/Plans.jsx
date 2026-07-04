@@ -34,7 +34,7 @@ function Plans({ onClose }) {
                 boxShadow: "0 24px 60px rgba(0,0,0,0.6)"
             }}>
 
-                {/* Header - تعديل الترتيب ليصبح النص يمين والأيقونة يسار */}
+                
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "right", gap: "8px", marginBottom: "20px" }}>
                     <span style={{ fontSize: "18px" }}>💎</span>
                     <h2 style={{ color: "#f2f2f2", fontSize: "17px", fontWeight: "700", margin: 0 }}>

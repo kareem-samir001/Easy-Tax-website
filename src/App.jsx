@@ -19,29 +19,29 @@ function App() {
   const [authPage, setAuthPage] = useState('signup')
   const [userData, setUserData] = useState(null)
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        try {
-          const res = await authAPI.me();
-          console.log('me() response:', res); 
-          const user = res?.user || res;
-          setUserData(user);
-          setLoggedIn(true);
-        } catch (error) {
-          console.error("Auth check failed:", error);
-          localStorage.removeItem('authToken');
-          setUserData(null);
-          setLoggedIn(false);
-        }
-      } else {
-        setUserData(null);
-        setLoggedIn(false);
-      }
-    };
-    checkAuth();
-  }, [])
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const token = localStorage.getItem('authToken');
+  //     if (token) {
+  //       try {
+  //         const res = await authAPI.me();
+  //         console.log('me() response:', res); 
+  //         const user = res?.user || res;
+  //         setUserData(user);
+  //         setLoggedIn(true);
+  //       } catch (error) {
+  //         console.error("Auth check failed:", error);
+  //         localStorage.removeItem('authToken');
+  //         setUserData(null);
+  //         setLoggedIn(false);
+  //       }
+  //     } else {
+  //       setUserData(null);
+  //       setLoggedIn(false);
+  //     }
+  //   };
+  //   checkAuth();
+  // }, [])
 
   if (!loggedIn) {
     if (authPage === 'signup') {

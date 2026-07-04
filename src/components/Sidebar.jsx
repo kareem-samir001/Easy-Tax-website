@@ -8,6 +8,7 @@ import { useTijara } from '../context/TijaraContext';
 import Export from "../pages/export";
 import Plans from "../pages/Plans";
 import LogOutModal from "../pages/logOutpage";
+import AccSetting from "../pages/AccSetting";
 
 
 function Sidebar({ userData, onLogout }) {
@@ -15,14 +16,14 @@ function Sidebar({ userData, onLogout }) {
     const [showExport, setShowExport] = useState(false);
     const [showPlans, setShowPlans] = useState(false);
     const [showLogOutModal, setShowLogOutModal] = useState(false);
+    const [showAccSettings, setShowAccSettings] = useState(false);
 
     const navigate = useNavigate();
     const location = useLocation();
-    
+
     const { state } = useTijara();
     const { products } = state;
 
-    // حساب المنتجات الناقصة من الـ Context مباشرة بدون مبيعات وبدون تفكير في الـ useEffect
     const lowProducts = useMemo(() => {
         if (!products) return 0;
         return products.filter(p => (p.quantity || 0) < (p.minimumQuantity || 0)).length;
@@ -118,14 +119,6 @@ function Sidebar({ userData, onLogout }) {
                     }}>
                         {/* Avatar + Name + Plan */}
                         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-                            <div style={{
-                                width: "36px", height: "36px", borderRadius: "50%",
-                                background: "#22c97a22", border: "1px solid #22c97a44",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                fontSize: "13px", fontWeight: "800", color: "#22c97a", flexShrink: 0
-                            }}>
-                                {userData?.fullName?.charAt(0) || "؟"}
-                            </div>
                             <div style={{ textAlign: "right" }}>
                                 <div style={{ fontSize: "15px", fontWeight: "700", color: "#f2f2f2" }}>
                                     {userData?.fullName || "المستخدم"}
@@ -159,7 +152,10 @@ function Sidebar({ userData, onLogout }) {
                         <div style={{ height: "1px", background: "#2a2a2a", margin: "4px 0 8px" }} />
 
                         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                            {settingItem("إعدادات الحساب", <MdSettings />, () => navigate("/settings"))}
+                            {settingItem("إعدادات الحساب", <MdSettings />, () => {
+                                setShowAccSettings(true)
+                                setShowSettings(false);
+                            })}
                             {settingItem("باقتي وفواتيري", <MdCreditCard />, () => {
                                 setShowPlans(true);
                                 setShowSettings(false);
@@ -189,17 +185,10 @@ function Sidebar({ userData, onLogout }) {
                     onMouseEnter={e => e.currentTarget.style.background = "#1a1a1a"}
                     onMouseLeave={e => e.currentTarget.style.background = showSettings ? "#1a1a1a" : "transparent"}
                 >
-                    <div style={{
-                        width: "32px", height: "32px", borderRadius: "50%",
-                        background: "#22c97a22", border: "1px solid #22c97a44",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "12px", fontWeight: "800", color: "#22c97a", flexShrink: 0
-                    }}>
-                       {userData?.fullName?.charAt(0) || userData?.name?.charAt(0) || "؟"}
-                    </div>
+
                     <div style={{ flex: 1, textAlign: "right" }}>
                         <div style={{ fontSize: "12px", fontWeight: "700", color: "#f2f2f2" }}>
-                         {userData?.fullName || userData?.name || "المستخدم"}
+                            {userData?.fullName || userData?.name || "المستخدم"}
                         </div>
                         <div style={{ fontSize: "10px", color: "#555" }}>صاحب البيزنس</div>
                     </div>
@@ -227,6 +216,7 @@ function Sidebar({ userData, onLogout }) {
             {/* مودالات الصفحات الأخرى */}
             {showExport && <Export onClose={() => setShowExport(false)} />}
             {showPlans && <Plans onClose={() => setShowPlans(false)} />}
+            {showAccSettings && <AccSetting onClose={() => setShowAccSettings(false)} />}
         </>
     );
 }
