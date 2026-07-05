@@ -283,7 +283,10 @@ export default function Debts() {
                 onChange={(e) => setNote(e.target.value)}
               />
             </div>
-            <button type="submit" className="debts-btn-green debts-btn-green--full">
+            <button
+              type="submit"
+              className="debts-btn-green debts-btn-green--full"
+            >
               + تسجيل الدين
             </button>
           </form>
