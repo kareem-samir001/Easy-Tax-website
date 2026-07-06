@@ -1,5 +1,5 @@
 import Header from "../components/Header";
-import Statics from "../components/statics";
+import StatCard from "../components/StatCard";
 import { useState, useMemo } from "react";
 import { useTijara } from "../context/TijaraContext";
 
@@ -70,10 +70,25 @@ function Expenses() {
         <Header title="المصروفات" />
 
         {/* Stats */}
-        <div style={{ display: "flex", gap: "16px", justifyContent: "space-around", width: "94%", margin: "20px auto", borderRadius: "12px" }}>
-            <Statics title=" مصروفات هذا الشهر" value={(expenses || []).reduce((sum, expense) => sum + expense.amount, 0) + " جنيه"} valueColor={"white"} />
-            <Statics title="  ايرادات الشهر" value={monthlyRevenue.toLocaleString() + " جنيه"} valueColor={"white"} />
-            <Statics title=" صافي الربح بعد المصروفات" value={(monthlyRevenue - (expenses || []).reduce((sum, expense) => sum + expense.amount, 0)).toLocaleString() + " جنيه"} valueColor={"white"} />
+        <div style={{ display: "flex", gap: "16px", width: "94%", margin: "20px auto" }}>
+            <StatCard
+                title="مصروفات هذا الشهر"
+                value={(expenses || []).reduce((sum, e) => sum + e.amount, 0).toLocaleString()}
+                unit="جنيه"
+                accent="red"
+            />
+            <StatCard
+                title="إيرادات الشهر"
+                value={monthlyRevenue.toLocaleString()}
+                unit="جنيه"
+            />
+            <StatCard
+                title="صافي الربح بعد المصروفات"
+                value={(monthlyRevenue - (expenses || []).reduce((sum, e) => sum + e.amount, 0)).toLocaleString()}
+                unit="جنيه"
+                valueColor={(monthlyRevenue - (expenses || []).reduce((sum, e) => sum + e.amount, 0)) >= 0 ? '#22c97a' : '#f05c5c'}
+                accent={(monthlyRevenue - (expenses || []).reduce((sum, e) => sum + e.amount, 0)) >= 0 ? 'green' : 'red'}
+            />
         </div>
         {/* form */}
         <div style={{

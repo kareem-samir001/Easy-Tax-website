@@ -10,6 +10,7 @@ import SignUp from './auth/SignUp'
 import LogIn from './auth/LogIn'
 import Suppliers from './pages/Suppliers'
 import Debts from './pages/Debts'
+import Report from './pages/Report'
 import ProfitLoss from './pages/ProfitLoss'
 
 import { TijaraProvider } from './context/TijaraContext'
@@ -59,11 +60,13 @@ function App() {
         <Routes>
           <Route path="/" element={
             <div style={{ display: 'flex', direction: 'rtl', width: '100%', height: '100vh', backgroundColor: "#161616" }}>
-              <Sidebar userData={userData} onLogout={() => {
-                localStorage.removeItem('authToken');
-                setUserData(null);
-                setLoggedIn(false);
-              }} />
+              <div className="no-print">
+                <Sidebar userData={userData} onLogout={() => {
+                  localStorage.removeItem('authToken');
+                  setUserData(null);
+                  setLoggedIn(false);
+                }} />
+              </div>
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 <Outlet />
               </div>
@@ -76,6 +79,7 @@ function App() {
             <Route path="sales" element={<Sales />} />
             <Route path="suppliers" element={<Suppliers />} />
             <Route path="debts" element={<Debts />} />
+            <Route path="report" element={<Report />} />
             <Route path="profit-loss" element={<ProfitLoss />} />
           </Route>
         </Routes>

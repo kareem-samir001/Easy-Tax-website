@@ -1,38 +1,53 @@
-const XANO_BASE_URL = 'https://x8ki-letl-twmt.n7.xano.io';
+const XANO_BASE_URL = "https://x8ki-letl-twmt.n7.xano.io";
 const API_AUTH = `${XANO_BASE_URL}/api:MkIm7vH1`;
 const API_DATA = `${XANO_BASE_URL}/api:tijara`;
 
-// A thin wrapper over fetch to automatically attach the auth token
-async function fetchWithAuth(url, options = {}) {
-  const token = localStorage.getItem('authToken');
+// A thin wrapper over fetch to automatically attach the auth token and retry on 429 rate limits
+async function fetchWithAuth(url, options = {}, retries = 4, delay = 1500) {
+  const token = localStorage.getItem("authToken");
   const headers = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...options.headers,
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    let errorMsg;
-    try {
-      const errorData = await response.json();
-      errorMsg = errorData.message || JSON.stringify(errorData);
-    } catch {
-      errorMsg = response.statusText || 'Network response was not ok';
+    if (response.status === 429 && retries > 0) {
+      console.warn(`Rate limit hit (429) for ${url}. Retrying in ${delay}ms... (${retries} retries left)`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return fetchWithAuth(url, options, retries - 1, delay * 1.5);
     }
-    throw new Error(errorMsg);
-  }
 
-  // Handle empty responses (like 204 No Content or empty 200 OK for DELETE)
-  const text = await response.text();
-  return text ? JSON.parse(text) : {};
+    if (!response.ok) {
+      let errorMsg;
+      try {
+        const errorData = await response.json();
+        errorMsg = errorData.message || JSON.stringify(errorData);
+      } catch {
+        errorMsg = response.statusText || "Network response was not ok";
+      }
+      throw new Error(errorMsg);
+    }
+
+    // Handle empty responses (like 204 No Content or empty 200 OK for DELETE)
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
+  } catch (error) {
+    if (retries > 0 && (error.message && (error.message.includes("429") || error.message.includes("rate limit") || error.message.includes("Whoa there")))) {
+      console.warn(`Caught Rate limit error for ${url}. Retrying in ${delay}ms... (${retries} retries left)`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return fetchWithAuth(url, options, retries - 1, delay * 1.5);
+    }
+    throw error;
+  }
 }
 
 // 🛡️ دالة مساعدة لضمان أن البيانات المرتجعة عبارة عن Array دائمًا ومنع الـ Crash في الكومبوننتس
@@ -41,59 +56,110 @@ function ensureArray(data) {
   if (Array.isArray(data)) return data;
   // في Xano أحياناً البيانات بتغلف جوة object بمفتاح مثل data أو الاصلي، هنا بنفكها بأمان
   if (data.data && Array.isArray(data.data)) return data.data;
-  if (typeof data === 'object') {
+  if (typeof data === "object") {
     const values = Object.values(data);
-    const foundArray = values.find(val => Array.isArray(val));
+    const foundArray = values.find((val) => Array.isArray(val));
     if (foundArray) return foundArray;
   }
   return [];
 }
 
 export const authAPI = {
-  login: (email, password) => 
+  login: (email, password) =>
     fetchWithAuth(`${API_AUTH}/auth/login`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ email, password }),
     }),
-    
-  signup: (name, email, password, userName) => 
+
+  signup: (name, email, password, userName) =>
     fetchWithAuth(`${API_AUTH}/auth/signup`, {
       method: 'POST',
       body: JSON.stringify({ name, email, password, userName }),
     }),
-    
-  me: () => 
-    fetchWithAuth(`${API_AUTH}/auth/me`, { method: 'GET' }),
+
+  me: () => fetchWithAuth(`${API_AUTH}/auth/me`, { method: "GET" }),
 };
 
 export const dataAPI = {
   // Products
   getProducts: async () => {
-    const res = await fetchWithAuth(`${API_DATA}/product`, { method: 'GET' });
+    const res = await fetchWithAuth(`${API_DATA}/product`, { method: "GET" });
     return ensureArray(res); // ضمان رجوع Array
   },
-  addProduct: (product) => fetchWithAuth(`${API_DATA}/product`, { method: 'POST', body: JSON.stringify(product) }),
-  updateProduct: (id, updates) => fetchWithAuth(`${API_DATA}/product/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
-  deleteProduct: (id) => fetchWithAuth(`${API_DATA}/product/${id}`, { method: 'DELETE' }),
+  addProduct: (product) =>
+    fetchWithAuth(`${API_DATA}/product`, {
+      method: "POST",
+      body: JSON.stringify(product),
+    }),
+  updateProduct: (id, updates) =>
+    fetchWithAuth(`${API_DATA}/product/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+  deleteProduct: (id) =>
+    fetchWithAuth(`${API_DATA}/product/${id}`, { method: "DELETE" }),
 
   // Sales
   getSales: async () => {
-    const res = await fetchWithAuth(`${API_DATA}/sale`, { method: 'GET' });
+    const res = await fetchWithAuth(`${API_DATA}/sale`, { method: "GET" });
     return ensureArray(res); // ضمان رجوع Array
   },
-  addSale: (sale) => fetchWithAuth(`${API_DATA}/sale`, { method: 'POST', body: JSON.stringify(sale) }),
+  addSale: (sale) =>
+    fetchWithAuth(`${API_DATA}/sale`, {
+      method: "POST",
+      body: JSON.stringify(sale),
+    }),
 
   // Expenses
   getExpenses: async () => {
-    const res = await fetchWithAuth(`${API_DATA}/expense`, { method: 'GET' });
+    const res = await fetchWithAuth(`${API_DATA}/expense`, { method: "GET" });
     return ensureArray(res); // ضمان رجوع Array
   },
-  addExpense: (expense) => fetchWithAuth(`${API_DATA}/expense`, { method: 'POST', body: JSON.stringify(expense) }),
-  deleteExpense: (id) => fetchWithAuth(`${API_DATA}/expense/${id}`, { method: 'DELETE' }),
+  addExpense: (expense) =>
+    fetchWithAuth(`${API_DATA}/expense`, {
+      method: "POST",
+      body: JSON.stringify(expense),
+    }),
+  deleteExpense: (id) =>
+    fetchWithAuth(`${API_DATA}/expense/${id}`, { method: "DELETE" }),
 
   // Suppliers (Shipments)
-  getSuppliers: () => fetchWithAuth(`${API_DATA}/supplier`, { method: 'GET' }),
-  addSupplier: (supplier) => fetchWithAuth(`${API_DATA}/supplier`, { method: 'POST', body: JSON.stringify(supplier) }),
-  updateSupplier: (id, updates) => fetchWithAuth(`${API_DATA}/supplier/${id}`, { method: 'PATCH', body: JSON.stringify(updates) }),
-  deleteSupplier: (id) => fetchWithAuth(`${API_DATA}/supplier/${id}`, { method: 'DELETE' }),
+  getSuppliers: () => fetchWithAuth(`${API_DATA}/supplier`, { method: "GET" }),
+  addSupplier: (supplier) =>
+    fetchWithAuth(`${API_DATA}/supplier`, {
+      method: "POST",
+      body: JSON.stringify(supplier),
+    }),
+  updateSupplier: (id, updates) =>
+    fetchWithAuth(`${API_DATA}/supplier/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+  deleteSupplier: (id) =>
+    fetchWithAuth(`${API_DATA}/supplier/${id}`, { method: "DELETE" }),
+
+  // Debts
+  getDebts: async () => {
+    const res = await fetchWithAuth(`${API_DATA}/debt`, {
+      method: "GET",
+    });
+    return ensureArray(res);
+  },
+
+  addDebt: (debt) =>
+    fetchWithAuth(`${API_DATA}/debt`, {
+      method: "POST",
+      body: JSON.stringify(debt),
+    }),
+
+  updateDebt: (id, updates) =>
+    fetchWithAuth(`${API_DATA}/debt/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }),
+
+  deleteDebt: (id) =>
+    fetchWithAuth(`${API_DATA}/debt/${id}`, {
+      method: "DELETE",
+    }),
 };

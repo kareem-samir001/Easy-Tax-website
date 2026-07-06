@@ -1,8 +1,22 @@
 import { useMemo } from "react";
 import Header from "../components/Header";
-import Statics from "../components/statics";
+import StatCard from "../components/StatCard";
 import { useTijara } from "../context/TijaraContext";
 import { thStyles, generalStyles } from "./storageStyles.js";
+
+// Debt collections are tracked locally by Debts.jsx (Xano's `sale` table
+// requires a real product_id that a collection doesn't have). This page is
+// all-time, so we include every collection ever recorded, using the real
+// cost saved at debt-creation time for an accurate profit.
+const COLLECTIONS_KEY = "tijara_debt_collections";
+
+const getAllCollections = () => {
+  try {
+    return JSON.parse(localStorage.getItem(COLLECTIONS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+};
 
 function ProfitLoss() {
     const { state } = useTijara();
@@ -49,6 +63,25 @@ function ProfitLoss() {
                 statsMap[pId].profit += saleProfit;
             });
         }
+
+        // تحصيلات الديون (كل الوقت) — بالتكلفة الحقيقية المحفوظة وقت تسجيل الدين
+        const collections = getAllCollections();
+        collections.forEach((col, idx) => {
+            const colRevenue = col.amount || 0;
+            const colCost = col.cost || 0;
+            const colProfit = colRevenue - colCost;
+
+            revenue += colRevenue;
+            cogs += colCost;
+
+            const key = `debt-collection-${idx}`;
+            statsMap[key] = {
+                name: col.productName || `تحصيل دين: ${col.debtorName}`,
+                quantity: 1,
+                revenue: colRevenue,
+                profit: colProfit,
+            };
+        });
 
         if (expenses && expenses.length > 0) {
             expenses.forEach(exp => {
@@ -105,23 +138,25 @@ function ProfitLoss() {
 
             <div style={{ padding: "0 28px" }}>
                 {/* Stat Boxes */}
-                <div style={{ display: "flex", gap: "20px", marginTop: "24px", marginBottom: "32px", flexDirection: "row-reverse" }}>
-                    <Statics
+                <div style={{ display: "flex", gap: "20px", marginTop: "24px", marginBottom: "32px" }}>
+                    <StatCard
                         title="إجمالي الإيراد"
-                        value={formatCurrency(totalRevenue)}
-                        valueColor="white"
+                        value={totalRevenue.toLocaleString()}
+                        unit="جنيه"
                     />
-                    <Statics
+                    <StatCard
                         title="التكاليف + المصروفات"
-                        value={formatCurrency(totalCosts)}
-                        valueColor="white"
+                        value={totalCosts.toLocaleString()}
+                        unit="جنيه"
+                        accent="red"
                     />
-                    <Statics
+                    <StatCard
                         title="الربح الصافي"
-                        value={formatCurrency(totalNetProfit)}
-                        valueColor={totalNetProfit >= 0 ? "#22c97a" : "#e05555"}
+                        value={totalNetProfit.toLocaleString()}
+                        unit="جنيه"
+                        valueColor={totalNetProfit >= 0 ? '#22c97a' : '#f05c5c'}
+                        accent={totalNetProfit >= 0 ? 'green' : 'red'}
                         subtitle={`هامش: ${Math.round(totalMargin)}%`}
-                        subtitleColor={totalNetProfit >= 0 ? "#22c97a" : "#e05555"}
                     />
                 </div>
 
@@ -130,11 +165,12 @@ function ProfitLoss() {
                     <div style={{ padding: "16px 20px", borderBottom: "1px solid #1f1f1f", display: "flex", justifyContent: "flex-end" }}>
                         <h3 style={{ color: "white", margin: 0, fontFamily: "cairo, sans-serif", fontSize: "16px" }}>تفاصيل الأرباح حسب المنتج</h3>
                     </div>
+                    <div style={{ maxHeight: "480px", overflowY: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                             <tr>
                                 {["المنتج", "كمية مباعة", "الإيراد", "الربح", "الهامش"].map(h => (
-                                    <th key={h} style={{ ...thStyles, backgroundColor: "transparent", borderBottom: "1px solid #1f1f1f", padding: "16px" }}>{h}</th>
+                                    <th key={h} style={{ ...thStyles, backgroundColor: "transparent", borderBottom: "1px solid #1f1f1f", padding: "16px", position: "sticky", top: 0 }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -169,6 +205,7 @@ function ProfitLoss() {
                             )}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </>

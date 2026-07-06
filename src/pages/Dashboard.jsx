@@ -13,34 +13,12 @@ const Dashboard = () => {
   });
 
   const { state } = useContext(TijaraContext);
-  const { products, sales, isLoading, error } = state;
+  const { products, sales, isLoading, error, debts } = state;
 
-  const { todayRevenue, todayProfit, storeValue, lowStockProducts, salesLog, overdueDebtsCount } = useMemo(() => {
+  const { todayRevenue, todayProfit, storeValue, lowStockProducts, salesLog, totalDebts } = useMemo(() => {
     // 🛡️ التعديل هنا: حماية كاملة بالتأكد من أن البيانات موجودة وأن sales هي Array فعلاً
     if (!products || !sales || !Array.isArray(sales)) {
-      return { todayRevenue: 0, todayProfit: 0, storeValue: 0, lowStockProducts: [], salesLog: [], overdueDebtsCount: 0 };
-    }
-
-    // Load debts from localStorage
-    let overdueDebtsCount = 0;
-    try {
-      const rawDebts = localStorage.getItem("tijara_debts");
-      if (rawDebts) {
-        const parsedDebts = JSON.parse(rawDebts);
-        if (Array.isArray(parsedDebts)) {
-          const now = new Date();
-          // Normalize and check for overdue
-          overdueDebtsCount = parsedDebts.filter(d => {
-            const amount = d.amount ?? 0;
-            const paid = d.paid ?? d.paidAmount ?? 0;
-            const due = d.due ?? d.dueDate ?? "";
-            if (amount <= paid || !due) return false;
-            return new Date(due) < now;
-          }).length;
-        }
-      }
-    } catch (err) {
-      console.error("Failed to parse debts", err);
+      return { todayRevenue: 0, todayProfit: 0, storeValue: 0, lowStockProducts: [], salesLog: [], totalDebts: 0 };
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -87,8 +65,13 @@ const Dashboard = () => {
       };
     }).slice(0, 7);
 
-    return { todayRevenue, todayProfit, storeValue, lowStockProducts, salesLog, overdueDebtsCount };
-  }, [products, sales]);
+    const totalDebts = (debts || []).reduce(
+      (sum, d) => (d.isPaid ? sum : sum + (d.amount || 0)),
+      0,
+    );
+
+    return { todayRevenue, todayProfit, storeValue, lowStockProducts, salesLog, totalDebts };
+  }, [products, sales, debts]);
 
   if (isLoading) {
     return (
@@ -146,9 +129,13 @@ const Dashboard = () => {
           <div className="card-header">
             <span className="card-title">ديون لم تسدد</span>
           </div>
-          <h2 className="card-value red-text">- 0 <span style={{ fontSize: '14px', color: '#666', fontWeight: 'normal' }}>جنيه</span></h2>
-          <p className="card-subtitle" style={{ color: '#eab308', display: 'flex', alignItems: 'center', gap: '4px' }}>
-             ليس لديك ديون حاليا
+          <h2 className="card-value red-text">- {(totalDebts || 0).toLocaleString()} <span style={{ fontSize: '14px', color: '#666', fontWeight: 'normal' }}>جنيه</span></h2>
+          <p className="card-subtitle" style={{ color: totalDebts > 0 ? '#eab308' : '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {totalDebts > 0 ? (
+              <Link to="/debts" style={{ color: 'inherit', textDecoration: 'underline' }}>عرض الديون ←</Link>
+            ) : (
+              'ليس لديك ديون حاليا'
+            )}
           </p>
         </div>
       </div>
@@ -160,9 +147,9 @@ const Dashboard = () => {
             <span>⚠️ مخزون قليل: {lowStockProducts.map(p => p.name).join(' — ')}</span>
           </div>
         )}
-        {overdueDebtsCount > 0 && (
+        {totalDebts > 0 && (
           <div className="banner red">
-            <span>🔴 عندك {overdueDebtsCount} دين(ديون) متأخر — <Link to="/debts" className="banner-link" style={{ color: '#ef4444' }}>اضغط هنا للتفاصيل</Link></span>
+            <span>🔴 يوجد ديون غير مسددة — <Link to="/debts" className="banner-link" style={{ color: '#ef4444' }}>اضغط هنا للتفاصيل</Link></span>
           </div>
         )}
       </div>
@@ -206,7 +193,7 @@ const Dashboard = () => {
       <div className="panel">
         <div className="table-header-row">
           <h3 className="panel-title" style={{ margin: 0 }}>سجل المبيعات — آخر 7 أيام</h3>
-          <Link to="/sales" className="table-link">
+          <Link to="/report" className="table-link">
              <MdArrowBack style={{ verticalAlign: 'middle', marginLeft: '4px' }} /> تقرير اليوم 
           </Link>
         </div>

@@ -1,212 +1,303 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import Header from "../components/Header";
-import Statics from "../components/statics";
 import toast from "react-hot-toast";
+import { useTijara } from "../context/TijaraContext";
+import StatCard from "../components/StatCard";
 import "./Debts.css";
 
 /* ─────────────────────────────────────────────
    HELPERS
-───────────────────────────────────────────── */
-const fmt = (n) => Math.round(n).toLocaleString("ar-EG");
+ ───────────────────────────────────────────── */
+const fmt = (n) => Math.round(n || 0).toLocaleString("ar-EG");
 
 const isOverdue = (d) => {
-  if (d.amount <= d.paid) return false;
-  return new Date(d.due) < new Date();
+  if (d.isPaid) return false;
+  return d.dueDate && new Date(d.dueDate) < new Date();
 };
 
-const getInitials = (name) =>
-  (name || "")
+const getInitials = (name) => {
+  if (!name) return "دين";
+  return name
     .split(" ")
     .filter(Boolean)
     .map((w) => w[0])
     .join("")
     .substring(0, 2);
+};
 
-const getDaysLeft = (due) =>
-  Math.ceil((new Date(due) - new Date()) / (1000 * 60 * 60 * 24));
+const getDaysLeft = (dueDate) => {
+  if (!dueDate) return 0;
+  return Math.ceil((new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+};
 
-const normalizeDebt = (d) => ({
-  id: d.id ?? Date.now(),
-  name: d.name ?? "",
-  amount: d.amount ?? 0,
-  paid: d.paid ?? d.paidAmount ?? 0,
-  due: d.due ?? d.dueDate ?? "",
-  note: d.note ?? d.notes ?? "",
-  date: d.date ?? new Date().toLocaleDateString("ar-EG"),
-});
+const defaultDueDate = () => {
+  const nd = new Date();
+  nd.setDate(nd.getDate() + 7);
+  return nd.toISOString().split("T")[0];
+};
 
-const SAMPLE_DEBTS = [
-  {
-    id: 1,
-    name: "محمد علي",
-    amount: 850,
-    paid: 0,
-    due: "2026-06-18",
-    note: "3 كيلو أرز + 2 كيلو سكر",
-    date: "10 يونيو",
-  },
-  {
-    id: 2,
-    name: "أم أحمد",
-    amount: 450,
-    paid: 0,
-    due: "2026-06-25",
-    note: "زيت وزبدة",
-    date: "15 يونيو",
-  },
-  {
-    id: 3,
-    name: "عم حسن",
-    amount: 1200,
-    paid: 600,
-    due: "2026-06-30",
-    note: "بضاعة متنوعة",
-    date: "12 يونيو",
-  },
-];
+/* ─────────────────────────────────────────────
+   EXTRA DEBT DATA (local-only, NOT synced with Xano)
+   Xano's `debt` table only has debtorName/amount/isPaid/dueDate —
+   no product/quantity/cost columns. We keep the real product link,
+   quantity, and true cost here so profit is calculated correctly
+   when the debt is collected, instead of treating 100% of the
+   amount as profit.
+ ───────────────────────────────────────────── */
+const EXTRA_KEY = "tijara_debt_extra";
+
+const getAllExtra = () => {
+  try {
+    return JSON.parse(localStorage.getItem(EXTRA_KEY) || "{}");
+  } catch {
+    return {};
+  }
+};
+
+const getExtra = (id) => getAllExtra()[id] || null;
+
+const saveExtra = (id, data) => {
+  const all = getAllExtra();
+  all[id] = data;
+  localStorage.setItem(EXTRA_KEY, JSON.stringify(all));
+};
+
+const removeExtra = (id) => {
+  const all = getAllExtra();
+  delete all[id];
+  localStorage.setItem(EXTRA_KEY, JSON.stringify(all));
+};
+
+/* ─────────────────────────────────────────────
+   DEBT COLLECTIONS (local-only, read by Report.jsx)
+   Xano's `sale` table requires a real product_id, which a
+   debt collection doesn't have — so we track collected amounts
+   here instead, and Report.jsx adds them to today's revenue,
+   using the REAL cost saved in EXTRA_KEY for an accurate profit.
+ ───────────────────────────────────────────── */
+const COLLECTIONS_KEY = "tijara_debt_collections";
+
+const addCollectionRecord = (debtorName, amount, productName, cost) => {
+  let all = [];
+  try {
+    all = JSON.parse(localStorage.getItem(COLLECTIONS_KEY) || "[]");
+  } catch {
+    all = [];
+  }
+  all.push({
+    debtorName,
+    amount,
+    productName: productName || `تحصيل دين: ${debtorName}`,
+    cost: cost || 0,
+    date: new Date().toISOString().split("T")[0],
+    ts: Date.now(),
+  });
+  localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(all));
+};
 
 /* ─────────────────────────────────────────────
    COMPONENT
-───────────────────────────────────────────── */
+ ───────────────────────────────────────────── */
 export default function Debts() {
-  const [debts, setDebts] = useState([]);
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [due, setDue] = useState("");
-  const [note, setNote] = useState("");
+  const {
+    state,
+    addDebt: contextAddDebt,
+    updateDebt: contextUpdateDebt,
+    updateProduct: contextUpdateProduct,
+    deleteDebt: contextDeleteDebt,
+  } = useTijara();
+  const { debts, products, isLoading, error } = state;
 
-  /* collect modal */
+  // Form States
+  const [debtorName, setDebtorName] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [dueDate, setDueDate] = useState(defaultDueDate());
+  const [submitting, setSubmitting] = useState(false);
+
+  // Collect Modal States
   const [collectOpen, setCollectOpen] = useState(false);
-  const [collectingId, setCollectingId] = useState(null);
-  const [collectAmount, setCollectAmount] = useState("");
+  const [collectingDebt, setCollectingDebt] = useState(null);
   const [collectMethod, setCollectMethod] = useState("كاش");
+  const [collectingId, setCollectingId] = useState(null);
 
-  const nextId = useRef(100);
+  const safeProducts = products || [];
+  const selectedProduct = safeProducts.find(
+    (p) => String(p.id) === String(selectedProductId),
+  );
 
-  /* ── load ── */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("tijara_debts");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const normalized = parsed.map(normalizeDebt);
-          setDebts(normalized);
-          nextId.current = Math.max(...normalized.map((d) => d.id), 99) + 1;
-        } else {
-          loadSample();
-        }
-      } else {
-        loadSample();
-      }
-    } catch {
-      loadSample();
-    }
-    /* set default due date = today + 7 */
-    const nd = new Date();
-    nd.setDate(nd.getDate() + 7);
-    setDue(nd.toISOString().split("T")[0]);
-  }, []);
+  const computedAmount = useMemo(() => {
+    const qty = parseFloat(quantity) || 0;
+    if (!selectedProduct || !qty) return 0;
+    return qty * (selectedProduct.sellingPrice || 0);
+  }, [selectedProduct, quantity]);
 
-  const loadSample = () => {
-    localStorage.setItem("tijara_debts", JSON.stringify(SAMPLE_DEBTS));
-    setDebts(SAMPLE_DEBTS);
-    window.dispatchEvent(new Event("storage"));
-  };
-
-  const save = (updated) => {
-    localStorage.setItem("tijara_debts", JSON.stringify(updated));
-    setDebts(updated);
-    window.dispatchEvent(new Event("storage"));
-  };
-
-  /* ── add debt ── */
-  const handleAdd = (e) => {
+  /* ── add debt (tied to a real product, deducts stock now) ── */
+  const handleAdd = async (e) => {
     e.preventDefault();
-    const amt = parseFloat(amount) || 0;
-    if (!name.trim() || !amt) {
-      toast.error("اكتب اسم العميل والمبلغ");
+    const qty = parseFloat(quantity) || 0;
+
+    if (!debtorName.trim()) {
+      toast.error("اكتب اسم العميل");
       return;
     }
-    const d = new Date();
-    const months = [
-      "يناير",
-      "فبراير",
-      "مارس",
-      "أبريل",
-      "مايو",
-      "يونيو",
-      "يوليو",
-      "أغسطس",
-      "سبتمبر",
-      "أكتوبر",
-      "نوفمبر",
-      "ديسمبر",
-    ];
-    const dateStr = `${d.getDate()} ${months[d.getMonth()]}`;
-    const newDebt = {
-      id: nextId.current++,
-      name: name.trim(),
+    if (!selectedProduct) {
+      toast.error("اختار المنتج اللي بيعته بالآجل");
+      return;
+    }
+    if (!qty || qty <= 0) {
+      toast.error("اكتب كمية صحيحة");
+      return;
+    }
+    if (qty > (selectedProduct.quantity || 0)) {
+      toast.error("الكمية أكبر من المتاح في المخزن");
+      return;
+    }
+
+    const amt = qty * (selectedProduct.sellingPrice || 0);
+    const cost = qty * (selectedProduct.buyingPrice || 0);
+
+    // Matches Xano's `debt` table columns exactly: debtorName, amount, isPaid, dueDate
+    const debtData = {
+      debtorName: debtorName.trim(),
       amount: amt,
-      paid: 0,
-      due,
-      note: note.trim(),
-      date: dateStr,
+      isPaid: false,
+      dueDate: dueDate,
     };
-    save([newDebt, ...debts]);
-    setName("");
-    setAmount("");
-    setNote("");
-    toast.success("✅ تم تسجيل الدين");
+
+    setSubmitting(true);
+    const newDebt = await contextAddDebt(debtData);
+
+    if (newDebt && newDebt.id) {
+      // Save the real product link/qty/cost locally (Xano has no columns for it)
+      saveExtra(newDebt.id, {
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        qty,
+        cost,
+      });
+
+      // Deduct stock now — the goods already left the store on credit,
+      // exactly like a cash sale would. Send the FULL product record on
+      // update (Xano's PATCH needs every column, not just quantity).
+      const newQuantity = (selectedProduct.quantity || 0) - qty;
+      await contextUpdateProduct(selectedProduct.id, {
+        name: selectedProduct.name,
+        quantity: newQuantity,
+        buyingPrice: selectedProduct.buyingPrice,
+        sellingPrice: selectedProduct.sellingPrice,
+        unit: selectedProduct.unit,
+        minimumQuantity: selectedProduct.minimumQuantity,
+        status:
+          newQuantity < (selectedProduct.minimumQuantity || 0)
+            ? "ناقص"
+            : "متاح",
+      });
+    }
+
+    setSubmitting(false);
+    setDebtorName("");
+    setSelectedProductId("");
+    setQuantity("");
+    setDueDate(defaultDueDate());
   };
 
-  /* ── collect ── */
-  const openCollect = (id) => {
-    const d = debts.find((x) => x.id === id);
-    if (!d) return;
-    setCollectingId(id);
-    setCollectAmount(String(d.amount - d.paid));
-    setCollectMethod("كاش");
+  /* ── open collect modal ── */
+  const openCollect = (d) => {
+    setCollectingDebt(d);
     setCollectOpen(true);
   };
 
-  const confirmCollect = () => {
-    const amt = parseFloat(collectAmount) || 0;
-    if (!amt) {
-      toast.error("أدخل المبلغ");
-      return;
-    }
-    const d = debts.find((x) => x.id === collectingId);
-    if (!d) return;
-    const updated = debts.map((x) =>
-      x.id === collectingId
-        ? { ...x, paid: Math.min(x.paid + amt, x.amount) }
-        : x,
-    );
-    save(updated);
-    setCollectOpen(false);
-    if (d.paid + amt >= d.amount) {
-      toast.success(`✅ تم تحصيل دين ${d.name} بالكامل!`);
-    } else {
-      toast.success(`✅ تم تسجيل دفعة ${fmt(amt)} ج من ${d.name}`);
+  /* ── confirm collect payment (full amount only, matches Xano's isPaid flag) ── */
+  const confirmCollect = async () => {
+    if (!collectingDebt) return;
+
+    setCollectingId(collectingDebt.id);
+    try {
+      // Xano's PATCH endpoint requires all fields in the body, not just the
+      // one changing — so we send the full record with isPaid flipped.
+      await contextUpdateDebt(collectingDebt.id, {
+        debtorName: collectingDebt.debtorName,
+        amount: collectingDebt.amount,
+        dueDate: collectingDebt.dueDate,
+        isPaid: true,
+      });
+
+      // Log the collected amount locally so Report.jsx can add it to
+      // today's revenue/profit using the REAL cost of the product that
+      // was sold on credit — not treating the whole amount as profit.
+      const extra = getExtra(collectingDebt.id);
+      addCollectionRecord(
+        collectingDebt.debtorName,
+        collectingDebt.amount,
+        extra?.productName,
+        extra?.cost,
+      );
+
+      setCollectOpen(false);
+      toast.success(
+        `✅ تم تحصيل دين ${collectingDebt.debtorName} بالكامل (${collectMethod})`,
+      );
+    } catch {
+      // context already shows an error toast
+    } finally {
+      setCollectingId(null);
     }
   };
 
-  /* ── delete ── */
-  const handleDelete = (id) => {
+  /* ── delete (restores stock if the debt was never collected) ── */
+  const handleDelete = async (id) => {
     if (!window.confirm("هتمسح الدين ده؟")) return;
-    save(debts.filter((x) => x.id !== id));
-    toast.success("🗑️ تم مسح الدين");
+
+    const debt = (debts || []).find((d) => d.id === id);
+    const extra = getExtra(id);
+
+    // If it was never paid, the goods are effectively "returned" — put the
+    // quantity back in stock.
+    if (debt && !debt.isPaid && extra) {
+      const product = safeProducts.find((p) => p.id === extra.productId);
+      if (product) {
+        const restoredQuantity = (product.quantity || 0) + (extra.qty || 0);
+        await contextUpdateProduct(product.id, {
+          name: product.name,
+          quantity: restoredQuantity,
+          buyingPrice: product.buyingPrice,
+          sellingPrice: product.sellingPrice,
+          unit: product.unit,
+          minimumQuantity: product.minimumQuantity,
+          status:
+            restoredQuantity < (product.minimumQuantity || 0)
+              ? "ناقص"
+              : "متاح",
+        });
+      }
+    }
+
+    await contextDeleteDebt(id);
+    removeExtra(id);
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", width: "100%" }}>
+        <div style={{ color: "#22c97a", fontSize: "24px", fontFamily: "cairo, sans-serif" }}>جاري التحميل...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", width: "100%" }}>
+        <div style={{ color: "#ef4444", fontSize: "20px", fontFamily: "cairo, sans-serif" }}>حدث خطأ: {error}</div>
+      </div>
+    );
+  }
 
   /* ── derived values ── */
-  const remaining = debts
-    .map((d) => ({ ...d, rem: d.amount - d.paid }))
-    .filter((d) => d.rem > 0);
-  const totalRem = remaining.reduce((s, d) => s + d.rem, 0);
-  const overdue = remaining.filter((d) => isOverdue(d));
-  const activeDebts = debts.filter((d) => d.amount > d.paid);
-  const collectingDebt = debts.find((x) => x.id === collectingId);
+  const safeDebts = debts || [];
+  const unpaid = safeDebts.filter((d) => !d.isPaid);
+  const totalRem = unpaid.reduce((s, d) => s + (d.amount || 0), 0);
+  const overdue = unpaid.filter((d) => isOverdue(d));
 
   return (
     <div className="debts-page">
@@ -214,20 +305,22 @@ export default function Debts() {
 
       {/* ── metrics ── */}
       <div style={{ display: "flex", gap: "16px", margin: "20px 0" }}>
-        <Statics
+        <StatCard
           title="إجمالي المطلوب"
-          value={fmt(totalRem) + " جنيه"}
-          valueColor="#e05555"
+          value={fmt(totalRem)}
+          unit="جنيه"
+          valueColor="#f05c5c"
+          accent="red"
         />
-        <Statics
+        <StatCard
           title="عدد العملاء بالآجل"
-          value={remaining.length}
-          valueColor="white"
+          value={unpaid.length}
         />
-        <Statics
+        <StatCard
           title="ديون متأخرة"
           value={overdue.length}
-          valueColor={overdue.length ? "#e05555" : "white"}
+          valueColor={overdue.length ? '#f05c5c' : '#fff'}
+          accent={overdue.length ? 'red' : 'green'}
         />
       </div>
 
@@ -236,52 +329,86 @@ export default function Debts() {
         {/* form card */}
         <div className="debts-card">
           <div className="debts-card-hd">
-            <div className="debts-card-title">📝 تسجيل دين جديد</div>
+            <div className="debts-card-title">📝 تسجيل دين جديد (بيع بالآجل)</div>
           </div>
-          <form onSubmit={handleAdd}>
-            <div className="debts-form-group">
-              <div className="debts-form-label">اسم العميل</div>
-              <input
-                className="debts-input"
-                placeholder="اسم العميل"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+          {safeProducts.length === 0 ? (
+            <div className="debts-empty">
+              <div className="debts-empty-icon">📦</div>
+              <div className="debts-empty-text">
+                أضف منتجات في صفحة المخزن الأول عشان تقدر تسجّل بيع بالآجل
+              </div>
             </div>
-            <div className="debts-form-row">
+          ) : (
+            <form onSubmit={handleAdd}>
               <div className="debts-form-group">
-                <div className="debts-form-label">المبلغ (جنيه)</div>
+                <div className="debts-form-label">اسم العميل</div>
                 <input
                   className="debts-input"
-                  type="number"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="اسم العميل"
+                  value={debtorName}
+                  onChange={(e) => setDebtorName(e.target.value)}
                 />
               </div>
               <div className="debts-form-group">
-                <div className="debts-form-label">تاريخ الاستحقاق</div>
-                <input
+                <div className="debts-form-label">المنتج</div>
+                <select
                   className="debts-input"
-                  type="date"
-                  value={due}
-                  onChange={(e) => setDue(e.target.value)}
-                />
+                  value={selectedProductId}
+                  onChange={(e) => setSelectedProductId(e.target.value)}
+                >
+                  <option value="">اختر المنتج</option>
+                  {safeProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} (متاح: {p.quantity || 0} {p.unit})
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
-            <div className="debts-form-group">
-              <div className="debts-form-label">البضاعة / الملاحظة</div>
-              <input
-                className="debts-input"
-                placeholder="مثال: 5 كيلو أرز + كيلو سكر"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </div>
-            <button type="submit" className="debts-btn-green debts-btn-green--full">
-              + تسجيل الدين
-            </button>
-          </form>
+              <div className="debts-form-row">
+                <div className="debts-form-group">
+                  <div className="debts-form-label">
+                    الكمية {selectedProduct ? `(${selectedProduct.unit})` : ""}
+                  </div>
+                  <input
+                    className="debts-input"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                  />
+                </div>
+                <div className="debts-form-group">
+                  <div className="debts-form-label">تاريخ الاستحقاق</div>
+                  <input
+                    className="debts-input"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              {selectedProduct && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text2, #909090)",
+                    marginBottom: 12,
+                  }}
+                >
+                  المبلغ المستحق: <strong>{fmt(computedAmount)} ج</strong> (
+                  {quantity || 0} × {fmt(selectedProduct.sellingPrice)} ج)
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="debts-btn-green debts-btn-green--full"
+              >
+                {submitting ? "جاري الحفظ..." : "+ تسجيل الدين"}
+              </button>
+            </form>
+          )}
         </div>
 
         {/* summary card */}
@@ -289,7 +416,7 @@ export default function Debts() {
           <div className="debts-card-hd">
             <div className="debts-card-title">ملخص الديون</div>
           </div>
-          {remaining.length === 0 ? (
+          {unpaid.length === 0 ? (
             <div className="debts-empty">
               <div className="debts-empty-icon">✅</div>
               <div className="debts-empty-text">مفيش ديون — تمام!</div>
@@ -304,7 +431,7 @@ export default function Debts() {
               </div>
               <div className="debts-stat-row">
                 <span className="debts-stat-label">عدد العملاء</span>
-                <span className="debts-stat-val">{remaining.length} عميل</span>
+                <span className="debts-stat-val">{unpaid.length} عميل</span>
               </div>
               <div className="debts-stat-row">
                 <span className="debts-stat-label">ديون متأخرة</span>
@@ -314,14 +441,12 @@ export default function Debts() {
                   {overdue.length} دين
                 </span>
               </div>
-              {remaining.length > 0 && (
-                <div className="debts-stat-row debts-stat-row--last">
-                  <span className="debts-stat-label">أكبر دين</span>
-                  <span className="debts-stat-val">
-                    {fmt(Math.max(...remaining.map((d) => d.rem)))} ج
-                  </span>
-                </div>
-              )}
+              <div className="debts-stat-row debts-stat-row--last">
+                <span className="debts-stat-label">أكبر دين</span>
+                <span className="debts-stat-val">
+                  {fmt(Math.max(...unpaid.map((d) => d.amount || 0)))} ج
+                </span>
+              </div>
             </>
           )}
         </div>
@@ -333,25 +458,28 @@ export default function Debts() {
           <div className="debts-card-title">قائمة الديون</div>
         </div>
 
-        {activeDebts.length === 0 ? (
+        {unpaid.length === 0 ? (
           <div className="debts-empty">
             <div className="debts-empty-icon">🤝</div>
             <div className="debts-empty-text">مفيش ديون مسجلة دلوقتي</div>
           </div>
         ) : (
-          activeDebts.map((d) => {
-            const rem = d.amount - d.paid;
+          unpaid.map((d) => {
+            const rem = d.amount || 0;
             const od = isOverdue(d);
-            const daysLeft = getDaysLeft(d.due);
+            const daysLeft = getDaysLeft(d.dueDate);
+            const extra = getExtra(d.id);
             let statusTxt, statusType;
             if (od) {
               statusTxt = "متأخر";
               statusType = "red";
-            } else if (daysLeft <= 3) {
+            } else if (daysLeft <= 3 && daysLeft >= 0) {
               statusTxt = `باقي ${daysLeft} يوم`;
               statusType = "amber";
             } else {
-              statusTxt = new Date(d.due).toLocaleDateString("ar-EG");
+              statusTxt = d.dueDate
+                ? new Date(d.dueDate).toLocaleDateString("ar-EG")
+                : "—";
               statusType = "green";
             }
 
@@ -363,21 +491,22 @@ export default function Debts() {
                 {/* avatar */}
                 <div
                   className={`debts-debt-avatar ${od ? "debts-debt-avatar--overdue" : ""}`}
+                  style={od ? { background: "var(--red-bg)", color: "var(--red)" } : {}}
                 >
-                  {getInitials(d.name)}
+                  {getInitials(d.debtorName)}
                 </div>
 
                 {/* info */}
                 <div className="debts-debt-info">
-                  <div className="debts-debt-name">{d.name}</div>
+                  <div className="debts-debt-name">{d.debtorName}</div>
                   <div className="debts-debt-meta">
-                    {d.note || "بدون ملاحظة"} · {d.date}
+                    {extra
+                      ? `${extra.productName} × ${extra.qty}`
+                      : "بدون منتج مرتبط"}
+                    {d.created_at
+                      ? ` · ${new Date(d.created_at).toLocaleDateString("ar-EG")}`
+                      : ""}
                   </div>
-                  {d.paid > 0 && (
-                    <div className="debts-debt-paid-note">
-                      ✓ دفع {fmt(d.paid)} ج جزئياً
-                    </div>
-                  )}
                 </div>
 
                 {/* amount + badge */}
@@ -394,7 +523,7 @@ export default function Debts() {
                 <div className="debts-debt-actions">
                   <button
                     className="debts-btn-green-xs"
-                    onClick={() => openCollect(d.id)}
+                    onClick={() => openCollect(d)}
                   >
                     تحصيل
                   </button>
@@ -422,45 +551,36 @@ export default function Debts() {
           <div className="debts-modal-title">💵 تحصيل دين</div>
           {collectingDebt && (
             <div className="debts-modal-summary">
-              <strong>{collectingDebt.name}</strong>
+              <strong>{collectingDebt.debtorName}</strong>
               <br />
-              المطلوب: {fmt(collectingDebt.amount - collectingDebt.paid)} جنيه
+              المطلوب: {fmt(collectingDebt.amount || 0)} جنيه
               <br />
               <span className="debts-modal-summary-note">
-                {collectingDebt.note || ""}
+                {(() => {
+                  const extra = getExtra(collectingDebt.id);
+                  return extra ? `${extra.productName} × ${extra.qty}` : "";
+                })()}
               </span>
             </div>
           )}
-          <div className="debts-form-row">
-            <div className="debts-form-group">
-              <div className="debts-form-label">المبلغ المحصّل (جنيه)</div>
-              <input
-                className="debts-input"
-                type="number"
-                placeholder="0"
-                value={collectAmount}
-                onChange={(e) => setCollectAmount(e.target.value)}
-              />
-            </div>
-            <div className="debts-form-group">
-              <div className="debts-form-label">طريقة الدفع</div>
-              <select
-                className="debts-input"
-                value={collectMethod}
-                onChange={(e) => setCollectMethod(e.target.value)}
-              >
-                <option>كاش</option>
-                <option>فودافون كاش</option>
-                <option>إنستاباي</option>
-              </select>
-            </div>
+          <div className="debts-form-group">
+            <div className="debts-form-label">طريقة الدفع</div>
+            <select
+              className="debts-input"
+              value={collectMethod}
+              onChange={(e) => setCollectMethod(e.target.value)}
+            >
+              <option>كاش</option>
+              <option>فودافون كاش</option>
+              <option>إنستاباي</option>
+            </select>
           </div>
           <div className="debts-modal-footer">
             <button className="debts-btn" onClick={() => setCollectOpen(false)}>
               إلغاء
             </button>
-            <button className="debts-btn-green" onClick={confirmCollect}>
-              ✅ تأكيد التحصيل
+            <button className="debts-btn-green" onClick={confirmCollect} disabled={collectingId !== null}>
+              {collectingId !== null ? "..." : "✅ تأكيد التحصيل الكامل"}
             </button>
           </div>
         </div>

@@ -114,6 +114,7 @@ function Sidebar({ userData, onLogout }) {
 
                 {/* التقارير والموردين */}
                 <p style={{ color: "#444", fontSize: "11px", fontFamily: "cairo, sans-serif", margin: "12px 4px 4px", textAlign: "right" }}>التقارير</p>
+                {navItem("تقرير اليوم", "/report", <MdBarChart />)}
                 {navItem("الأرباح والخسائر", "/profit-loss", <MdBarChart />)}
                 {navItem("المورّدون", "/suppliers", <MdLocalShipping />)}
 

@@ -39,18 +39,23 @@
 }
 
 .summary-card {
-  background-color: #1a1a1a;
-  border-radius: 8px;
-  padding: 20px;
+  background-color: #202020;
+  border-radius: 12px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   position: relative;
-  border: 1px solid #222;
+  border: 1px solid #2a2a2a;
+  transition: border-top-color 0.25s ease;
 }
 
-.summary-card.green-border { border-top: 3px solid #22c55e; }
-.summary-card.yellow-border { border-top: 3px solid #eab308; }
-.summary-card.red-border { border-top: 3px solid #ef4444; }
+.summary-card.green-border  { border-top: 4px solid #333; }
+.summary-card.yellow-border { border-top: 4px solid #333; }
+.summary-card.red-border    { border-top: 4px solid #333; }
+
+.summary-card.green-border:hover  { border-top-color: #22c97a; }
+.summary-card.yellow-border:hover { border-top-color: #22c97a; }
+.summary-card.red-border:hover    { border-top-color: #22c97a; }
 
 .card-header {
   display: flex;

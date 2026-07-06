@@ -8,57 +8,6 @@
   padding: 0 28px;
 }
 
-/* metric cards */
-.debts-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.debts-metric {
-  background: var(--bg1, #111);
-  border: 1px solid var(--border, #ffffff10);
-  border-radius: 16px;
-  padding: 16px;
-  position: relative;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-
-.debts-metric-accent {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-}
-.debts-metric-accent--red { background: var(--red, #f05c5c); }
-.debts-metric-accent--amber { background: var(--amber, #f5a623); }
-
-.debts-metric-label {
-  font-size: 11px;
-  color: var(--text3, #505050);
-  margin-bottom: 4px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.debts-metric-val {
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.5px;
-  color: var(--text1, #f0f0f0);
-}
-.debts-metric-val--red { color: var(--red, #f05c5c); }
-
-.debts-metric-unit {
-  font-size: 12px;
-  color: var(--text3, #505050);
-  font-weight: 400;
-}
 
 /* grid */
 .debts-grid2 {

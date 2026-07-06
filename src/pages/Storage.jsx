@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Statics from "../components/statics";
+import StatCard from "../components/StatCard";
 import Header from "../components/Header";
 import { useTijara } from "../context/TijaraContext";
 import { thStyles, generalStyles, inputStyle, buttonColor } from "./storageStyles.js";
@@ -86,21 +86,27 @@ function Storage() {
             <Header title="المخزن" buttonText="+ إضافة منتج" onButtonClick={() => { setEditId(null); setShowModal(true) }} />
 
             {/* Stats */}
-            <div style={{ display: "flex", gap: "16px", justifyContent: "space-around", width: "94%", margin: "20px auto", borderRadius: "12px" }}>
-                <Statics title="إجمالي المنتجات" value={products.length} valueColor={"white"} />
-                <Statics title="إجمالي قيمة المخزن" value={totalValue.toLocaleString() + " جنيه"} valueColor={"white"} />
-                <Statics title="منتجات قليلة" value={lowProducts} valueColor={lowProducts > 0 ? "#cb6262" : "gray"} />
+            <div style={{ display: "flex", gap: "16px", width: "94%", margin: "20px auto" }}>
+                <StatCard title="إجمالي المنتجات" value={products.length} />
+                <StatCard title="إجمالي قيمة المخزن" value={totalValue.toLocaleString()} unit="جنيه" />
+                <StatCard
+                    title="منتجات قليلة"
+                    value={lowProducts}
+                    valueColor={lowProducts > 0 ? '#f05c5c' : '#fff'}
+                    accent={lowProducts > 0 ? 'red' : 'green'}
+                />
             </div>
 
             {/* Table */}
             <div style={{ padding: "0 28px" }}>
-                <table style={{ width: "97%", borderCollapse: "collapse", backgroundColor: "#0f0f0f", borderRadius: "12px", overflow: "hidden", margin: "0 auto" }}>
+                <div style={{ maxHeight: "560px", overflowY: "auto", borderRadius: "12px", margin: "0 auto", width: "97%" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#0f0f0f", borderRadius: "12px", overflow: "hidden" }}>
                     <thead>
                         <tr>
                             {["اسم المنتج", "الكمية", "سعر الشراء", "سعر البيع", "الوحدة", "الحد الأدنى", "الإجمالي", "الحالة"].map(h => (
-                                <th key={h} style={thStyles}>{h}</th>
+                                <th key={h} style={{ ...thStyles, position: "sticky", top: 0, zIndex: 1 }}>{h}</th>
                             ))}
-                            <th style={thStyles}></th>
+                            <th style={{ ...thStyles, position: "sticky", top: 0, zIndex: 1 }}></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -152,6 +158,7 @@ function Storage() {
                         ))}
                     </tbody>
                 </table>
+                </div>
             </div>
 
             {/* Modal */}

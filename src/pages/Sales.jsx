@@ -58,7 +58,21 @@ function Sales() {
           profit: soldQuantity * (p.sellingPrice - p.buyingPrice),
           date: new Date().toISOString().split('T')[0]
         };
-        await contextAddSale(saleData, p.id, p.quantity - soldQuantity);
+
+        // Send the product's FULL record on update, not just the new
+        // quantity — Xano's PATCH endpoint needs every column present.
+        const newQuantity = p.quantity - soldQuantity;
+        const productUpdates = {
+          name: p.name,
+          quantity: newQuantity,
+          buyingPrice: p.buyingPrice,
+          sellingPrice: p.sellingPrice,
+          unit: p.unit,
+          minimumQuantity: p.minimumQuantity,
+          status: newQuantity < (p.minimumQuantity || 0) ? 'ناقص' : 'متاح',
+        };
+
+        await contextAddSale(saleData, p.id, productUpdates);
       }));
 
       setSaved(true);
