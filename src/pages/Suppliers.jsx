@@ -10,13 +10,12 @@ function Suppliers() {
 
     const [showModal, setShowModal] = useState(false);
     const [editId, setEditId] = useState(null);
-    const [hoveredRowId, setHoveredRowId] = useState(null); // لتأثير الـ Hover على الصفوف
+    const [hoveredRowId, setHoveredRowId] = useState(null);
 
     // حالات حقول الإدخال
     const [supplierName, setSupplierName] = useState('');
     const [productName, setProductName] = useState('');
     const [quantity, setQuantity] = useState(0);
-    const [currentCost, setCurrentCost] = useState(0);
     const [date, setDate] = useState('');
     const [unitPrice, setUnitPrice] = useState(0);
     const [notes, setNotes] = useState('');
@@ -25,7 +24,6 @@ function Suppliers() {
         setSupplierName('');
         setProductName('');
         setQuantity(0);
-        setCurrentCost(0);
         setDate('');
         setUnitPrice(0);
         setNotes('');
@@ -33,16 +31,16 @@ function Suppliers() {
     };
 
     const handleSaveShipment = async () => {
-        if (!supplierName || !productName || !quantity || !currentCost || !date || !unitPrice || !notes) {
+        if (!supplierName || !productName || !quantity || !date || !unitPrice || !notes) {
             alert("من فضلك ادخل بيانات الشحنة")
             return;
         }
 
         const shipmentData = {
+            name: supplierName,
             supplier: supplierName,
             product: productName,
             quantity: Number(quantity),
-            currentCost: Number(currentCost),
             date: date,
             unitPrice: Number(unitPrice),
             notes: notes
@@ -62,7 +60,6 @@ function Suppliers() {
         setSupplierName(shipment.supplier);
         setProductName(shipment.product);
         setQuantity(shipment.quantity);
-        setCurrentCost(shipment.currentCost);
         setDate(shipment.date);
         setUnitPrice(shipment.unitPrice);
         setNotes(shipment.notes);
@@ -95,6 +92,7 @@ function Suppliers() {
     // ====== كائنات الستايل الجديدة (المطابقة لملف تيجارة المرفق) ======
     const tableStyle = {
         width: '100%',
+        tableLayout: 'fixed',
         borderCollapse: 'separate',
         borderSpacing: 0,
         fontSize: '13px',
@@ -111,6 +109,9 @@ function Suppliers() {
         letterSpacing: '0.03em',
         textTransform: 'uppercase',
         backgroundColor: '#111111', // var(--bg1)
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
     };
 
     const tdCustomStyle = (isHovered, isLast) => ({
@@ -119,7 +120,10 @@ function Suppliers() {
         color: '#f0f0f0', // var(--text1)
         verticalAlign: 'middle',
         backgroundColor: isHovered ? '#191919' : 'transparent', // var(--bg2) عند عمل Hover
-        transition: 'background 0.15s ease'
+        transition: 'background 0.15s ease',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
     });
 
     const actionButtonStyle = {
@@ -151,12 +155,20 @@ function Suppliers() {
 
             <div style={{ width: '98%', margin: '20px auto', overflowX: 'auto' }}>
                 <table style={tableStyle}>
+                    <colgroup>
+                        <col style={{ width: '16%' }} />
+                        <col style={{ width: '16%' }} />
+                        <col style={{ width: '11%' }} />
+                        <col style={{ width: '14%' }} />
+                        <col style={{ width: '13%' }} />
+                        <col style={{ width: '16%' }} />
+                        <col style={{ width: '14%' }} />
+                    </colgroup>
                     <thead>
                         <tr>
                             <th style={thCustomStyle}>المورد</th>
                             <th style={thCustomStyle}>المنتج </th>
                             <th style={thCustomStyle}>الكمية</th>
-                            <th style={thCustomStyle}>التكلفة الحالية</th>
                             <th style={thCustomStyle}>التاريخ</th>
                             <th style={thCustomStyle}>سعر الوحدة</th>
                             <th style={thCustomStyle}>ملاحظات</th>
@@ -177,7 +189,6 @@ function Suppliers() {
                                     <td style={tdCustomStyle(isHovered, isLast)}>{ship.supplier}</td>
                                     <td style={tdCustomStyle(isHovered, isLast)}>{ship.product}</td>
                                     <td style={tdCustomStyle(isHovered, isLast)}>{ship.quantity}</td>
-                                    <td style={tdCustomStyle(isHovered, isLast)}>{ship.currentCost}</td>
                                     <td style={tdCustomStyle(isHovered, isLast)}>{ship.date}</td>
                                     <td style={tdCustomStyle(isHovered, isLast)}>{ship.unitPrice}</td>
                                     <td style={tdCustomStyle(isHovered, isLast)}>{ship.notes}</td>
@@ -206,7 +217,7 @@ function Suppliers() {
                         })}
                         {shipments.length === 0 && (
                             <tr>
-                                <td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: '#888', backgroundColor: 'transparent', fontFamily: 'cairo, sans-serif' }}>لا توجد شحنات مسجلة حالياً.</td>
+                                <td colSpan="7" style={{ textAlign: 'center', padding: '20px', color: '#888', backgroundColor: 'transparent', fontFamily: 'cairo, sans-serif' }}>لا توجد شحنات مسجلة حالياً.</td>
                             </tr>
                         )}
                     </tbody>
@@ -232,7 +243,6 @@ function Suppliers() {
                             { label: "المورد", val: supplierName, set: setSupplierName, type: "text", ph: "اسم المورد..." },
                             { label: "المنتج", val: productName, set: setProductName, type: "text", ph: "اسم المنتج..." },
                             { label: "الكمية", val: quantity, set: setQuantity, type: "number", ph: "0" },
-                            { label: "التكلفة الحالية", val: currentCost, set: setCurrentCost, type: "number", ph: "0" },
                             { label: "التاريخ", val: date, set: setDate, type: "date", ph: " تاريخ الشحنة" },
                             { label: "سعر الوحدة", val: unitPrice, set: setUnitPrice, type: "number", ph: "10" },
                             { label: "ملاحظات", val: notes, set: setNotes, type: "text", ph: "ملاحظات إضافية" },

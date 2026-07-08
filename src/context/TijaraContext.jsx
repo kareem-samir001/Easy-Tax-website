@@ -246,7 +246,10 @@ export const TijaraProvider = ({ children }) => {
           "فشل الخادم في إرجاع بيانات المورد. تأكد من إعداد Xano بشكل صحيح.",
         );
       }
-      dispatch({ type: "ADD_SUPPLIER", payload: newSupplier });
+      // ندمج البيانات الأصلية اللي بعتناها مع الـ id الراجع
+      const completeSupplier = { ...supplierData, id: newSupplier.id };
+      console.log("SUPPLIER TO ADD:", completeSupplier); 
+      dispatch({ type: "ADD_SUPPLIER", payload: completeSupplier });
       toast.success("تمت إضافة الشحنة بنجاح");
     } catch (err) {
       console.error(err);
