@@ -138,8 +138,11 @@ export const dataAPI = {
   deleteExpense: (id) =>
     fetchWithAuth(`${API_DATA}/expense/${id}`, { method: "DELETE" }),
 
-  // Suppliers (Shipments)
-  getSuppliers: () => fetchWithAuth(`${API_DATA}/supplier`, { method: "GET" }),
+
+  getSuppliers: async () => {
+    const res = await fetchWithAuth(`${API_DATA}/supplier`, { method: "GET" });
+    return ensureArray(res);
+  },
   addSupplier: (supplier) =>
     fetchWithAuth(`${API_DATA}/supplier`, {
       method: "POST",

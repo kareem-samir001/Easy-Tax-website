@@ -43,7 +43,7 @@ function Suppliers() {
             quantity: Number(quantity),
             date: date,
             unitPrice: Number(unitPrice),
-            notes: notes
+            notes: notes,
         };
 
         if (editId !== null) {
