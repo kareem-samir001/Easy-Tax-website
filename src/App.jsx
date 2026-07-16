@@ -85,7 +85,7 @@ function App() {
           <Route path="/" element={
             <div style={{ display: 'flex', direction: 'rtl', width: '100%', height: '100vh', backgroundColor: "#161616" }}>
               <div className="no-print">
-                <Sidebar userData={userData} onLogout={() => {
+                <Sidebar onLogout={() => {
                   localStorage.removeItem('authToken');
                   setUserData(null);
                   setLoggedIn(false);

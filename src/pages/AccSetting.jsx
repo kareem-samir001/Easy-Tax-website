@@ -83,7 +83,7 @@ function AccSetting({ onClose }) {
                 setUser(userData);
 
                 // 🖊️ تعبئة الحقول من البيانات الراجعة (لو مش موجودة بتفضل فاضية للمستخدم يملاها)
-                setOwnerName(userData?.fullName || userData?.name || userData?.email || "");
+                setOwnerName(res.fullName );
                 setBusinessName(userData?.businessName || "");
                 setPhone(userData?.phone || "");
                 setCity(userData?.city || "");
@@ -111,9 +111,7 @@ function AccSetting({ onClose }) {
             await authAPI.updateMe({
                 fullName: ownerName,
                 businessName,
-                phone,
                 city,
-                businessType,
             });
 
             // 2. Change password only if user filled in both fields
