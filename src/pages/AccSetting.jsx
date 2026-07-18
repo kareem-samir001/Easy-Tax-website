@@ -28,11 +28,32 @@ function Field({ label, htmlFor, children }) {
     );
 }
 
+function EyeIcon({ visible }) {
+    return visible ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+        </svg>
+    ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.06M9.9 4.24A10.4 10.4 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24" />
+            <line x1="1" y1="1" x2="23" y2="23" />
+        </svg>
+    );
+}
+
 const inputStyle = {
     width: "100%", background: "#111", border: "1px solid #2a2a2a",
     borderRadius: "10px", padding: "11px 14px", color: "#f2f2f2",
     fontFamily: "cairo, sans-serif", fontSize: "14px",
     boxSizing: "border-box", outline: "none", textAlign: "right",
+};
+
+const eyeButtonStyle = {
+    position: "absolute", left: "10px", top: "50%",
+    transform: "translateY(-50%)", background: "transparent",
+    border: "none", cursor: "pointer", padding: 0,
+    display: "flex", alignItems: "center",
 };
 
 function AccSetting({ onClose }) {
@@ -49,6 +70,10 @@ function AccSetting({ onClose }) {
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
 
+    // إظهار/إخفاء كلمة المرور
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+
     useEffect(() => {
         const fetchUser = async () => {
             try {
@@ -58,7 +83,7 @@ function AccSetting({ onClose }) {
                 setUser(userData);
 
                 // 🖊️ تعبئة الحقول من البيانات الراجعة (لو مش موجودة بتفضل فاضية للمستخدم يملاها)
-                setOwnerName(userData?.fullName || userData?.name || userData?.email || "");
+                setOwnerName(res.fullName );
                 setBusinessName(userData?.businessName || "");
                 setPhone(userData?.phone || "");
                 setCity(userData?.city || "");
@@ -86,9 +111,7 @@ function AccSetting({ onClose }) {
             await authAPI.updateMe({
                 fullName: ownerName,
                 businessName,
-                phone,
                 city,
-                businessType,
             });
 
             // 2. Change password only if user filled in both fields
@@ -102,8 +125,8 @@ function AccSetting({ onClose }) {
         } catch (error) {
             console.error(error);
             const isNotFound = error.message?.toLowerCase().includes("locate") ||
-                               error.message?.includes("404") ||
-                               error.message?.toLowerCase().includes("not found");
+                error.message?.includes("404") ||
+                error.message?.toLowerCase().includes("not found");
             if (isNotFound) {
                 toast.error("⚙️ يجب إنشاء endpoint مخصص في Xano أولاً — راجع التعليمات");
             } else {
@@ -172,25 +195,14 @@ function AccSetting({ onClose }) {
                     />
                 </Field>
 
-                <Field label="اسم المحل / البيزنس" htmlFor="businessName">
-                    <input
-                        id="businessName"
-                        type="text"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        autoComplete="off"
-                        style={inputStyle}
-                    />
-                </Field>
-
                 {/* رقم الموبايل + المنطقة/المدينة — الترتيب هنا مطابق للتصميم (الموبايل يمين، المدينة شمال) */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                    <Field label="رقم الموبايل" htmlFor="phone">
+                    <Field label="اسم المحل / البيزنس" htmlFor="businessName">
                         <input
-                            id="phone"
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
+                            id="businessName"
+                            type="text"
+                            value={businessName}
+                            onChange={(e) => setBusinessName(e.target.value)}
                             autoComplete="off"
                             style={inputStyle}
                         />
@@ -211,17 +223,6 @@ function AccSetting({ onClose }) {
                     </Field>
                 </div>
 
-                <Field label="نوع البيزنس" htmlFor="businessType">
-                    <input
-                        id="businessType"
-                        type="text"
-                        value={businessType}
-                        onChange={(e) => setBusinessType(e.target.value)}
-                        autoComplete="off"
-                        style={inputStyle}
-                    />
-                </Field>
-
                 <div style={{ height: "1px", background: "#2a2a2a", margin: "12px 0 16px" }} />
 
                 <div style={{ color: "#f2f2f2", fontSize: "13px", fontWeight: "700", marginBottom: "12px", textAlign: "right" }}>
@@ -231,25 +232,45 @@ function AccSetting({ onClose }) {
                 {/* كلمة المرور الحالية + الجديدة — الحالية يمين، الجديدة شمال، مطابق للتصميم */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "8px" }}>
                     <Field label="كلمة المرور الحالية" htmlFor="currentPassword">
-                        <input
-                            id="currentPassword"
-                            type="password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            autoComplete="off"
-                            style={inputStyle}
-                        />
+                        <div style={{ position: "relative" }}>
+                            <input
+                                id="currentPassword"
+                                type={showCurrentPassword ? "text" : "password"}
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                autoComplete="off"
+                                style={{ ...inputStyle, paddingLeft: "40px" }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowCurrentPassword((v) => !v)}
+                                style={eyeButtonStyle}
+                                aria-label={showCurrentPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                            >
+                                <EyeIcon visible={showCurrentPassword} />
+                            </button>
+                        </div>
                     </Field>
 
                     <Field label="كلمة المرور الجديدة" htmlFor="newPassword">
-                        <input
-                            id="newPassword"
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            autoComplete="off"
-                            style={inputStyle}
-                        />
+                        <div style={{ position: "relative" }}>
+                            <input
+                                id="newPassword"
+                                type={showNewPassword ? "text" : "password"}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                autoComplete="off"
+                                style={{ ...inputStyle, paddingLeft: "40px" }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowNewPassword((v) => !v)}
+                                style={eyeButtonStyle}
+                                aria-label={showNewPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                            >
+                                <EyeIcon visible={showNewPassword} />
+                            </button>
+                        </div>
                     </Field>
                 </div>
 

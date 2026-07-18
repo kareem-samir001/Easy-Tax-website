@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+import { authAPI } from "../api";
+import { useEffect } from 'react'
+
 import {
     MdHome, MdShoppingCart, MdInventory, MdAccountBalanceWallet,
     MdHandshake, MdLocalShipping, MdBarChart, MdSettings, MdCreditCard, MdDownload, MdLogout
@@ -11,12 +14,30 @@ import LogOutModal from "../pages/logOutpage";
 import AccSetting from "../pages/AccSetting";
 
 
-function Sidebar({ userData, onLogout }) {
+function Sidebar({ onLogout }) {
     const [showSettings, setShowSettings] = useState(false);
     const [showExport, setShowExport] = useState(false);
     const [showPlans, setShowPlans] = useState(false);
     const [showLogOutModal, setShowLogOutModal] = useState(false);
     const [showAccSettings, setShowAccSettings] = useState(false);
+    const [user, setUser] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const res = await authAPI.me();
+                console.log("me() response:", res);
+                const userData = res?.user || res;
+                setUser(userData);
+            } catch (error) {
+                console.error("Auth check failed:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchUser();
+    }, []);
 
     // Normalise field names — Xano may return snake_case or camelCase
     const displayUserName = userData?.userName || userData?.user_name || null;
@@ -168,7 +189,7 @@ function Sidebar({ userData, onLogout }) {
                                 )}
                                 <div style={{ textAlign: "right", overflow: "hidden" }}>
                                     <div style={{ fontSize: "13px", fontWeight: "700", color: "#f2f2f2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                        {displayUserName || "المستخدم"}
+                                        {isLoading ? "جاري التحميل..." : (displayUserName || "المستخدم")}
                                     </div>
                                     {displayBusinessName && (
                                         <div style={{ fontSize: "11px", color: "#888", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -245,7 +266,7 @@ function Sidebar({ userData, onLogout }) {
                         )}
                         <div style={{ flex: 1, textAlign: "right", overflow: "hidden" }}>
                             <div style={{ fontSize: "14px", fontWeight: "700", color: "#f2f2f2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {displayUserName || "المستخدم"}
+                                {isLoading ? "جاري التحميل..." : (displayUserName || "المستخدم")}
                             </div>
                             {displayBusinessName && (
                                 <div style={{ fontSize: "12px", color: "#888", marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
