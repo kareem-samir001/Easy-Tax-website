@@ -5,6 +5,7 @@ import { useTijara } from "../context/TijaraContext";
 import { thStyles, generalStyles, inputStyle, buttonColor } from "./storageStyles.js";
 
 
+
 function Storage() {
     const { state, addProduct: contextAddProduct, updateProduct: contextUpdateProduct, deleteProduct: contextDeleteProduct } = useTijara();
     const { products, isLoading, error } = state;
@@ -17,6 +18,7 @@ function Storage() {
     const [minimumQuantity, setMinimumQuantity] = useState('')
     const [showModal, setShowModal] = useState(false)
     const [editId, setEditId] = useState(null)
+    const [productToDelete, setProductToDelete] = useState(null)
 
     // Function to add or update a product via Context
     const handleSaveProduct = async () => {
@@ -50,8 +52,8 @@ function Storage() {
     const totalValue = products.reduce((t, p) => t + ((p.quantity || 0) * (p.buyingPrice || 0)), 0)
     const lowProducts = products.filter(p => (p.quantity || 0) < (p.minimumQuantity || 0)).length
 
-    const deleteItem = async (id) => {
-        await contextDeleteProduct(id)
+    const deleteItem = (product) => {
+        setProductToDelete(product)
     }
 
     const modifyItem = (product) => {
@@ -148,7 +150,7 @@ function Storage() {
                                         border: "1px solid #ffffff22", borderRadius: "8px",
                                         padding: "8px 16px", cursor: "pointer",
                                         fontFamily: "cairo, sans-serif", fontSize: "13px", fontWeight: "600"
-                                    }} onClick={() => deleteItem(p.id)}
+                                    }} onClick={() => deleteItem(p)}
                                         onMouseEnter={(e) => { e.target.style.backgroundColor = "#e05555"; e.target.style.color = "white" }}
                                         onMouseLeave={(e) => { e.target.style.backgroundColor = "#1e1e1e"; e.target.style.color = "#a0a0a0" }}>
                                         حذف
@@ -200,6 +202,62 @@ function Storage() {
                                 border: "none", borderRadius: "8px", cursor: "pointer", fontFamily: "cairo, sans-serif", fontWeight: "700"
                             }} onClick={handleSaveProduct}>
                                 {editId !== null ? 'حفظ التعديلات' : 'إضافة المنتج'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {productToDelete && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1001
+                }}>
+                    <div style={{
+                        borderRadius: '16px', backgroundColor: "#111", padding: "32px",
+                        width: "400px", maxWidth: "90vw", border: "1px solid #ff4d4d33",
+                        boxShadow: "0 8px 32px rgba(255, 77, 77, 0.15)",
+                        textAlign: "center", display: "flex", flexDirection: "column", gap: "20px"
+                    }}>
+                        <div style={{
+                            width: "60px", height: "60px", borderRadius: "50%", backgroundColor: "#3a1a1a",
+                            display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto",
+                            border: "1px solid #ff4d4d44"
+                        }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff4d4d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+                            </svg>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <h3 style={{ color: "white", margin: 0, fontFamily: "cairo, sans-serif", fontSize: "20px", fontWeight: "600" }}>
+                                تأكيد الحذف
+                            </h3>
+                            <p style={{ color: "#aaa", margin: 0, fontFamily: "cairo, sans-serif", fontSize: "14px", lineHeight: "1.6", direction: "rtl" }}>
+                                هل أنت متأكد أنك تريد حذف المنتج <strong style={{ color: "#fff" }}>"{productToDelete.name}"</strong>؟ لا يمكن التراجع عن هذا الإجراء.
+                            </p>
+                        </div>
+                        <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "10px", flexDirection: "row-reverse" }}>
+                            <button style={{
+                                backgroundColor: "#e05555", color: "white", padding: "10px 24px",
+                                border: "none", borderRadius: "8px", cursor: "pointer", fontFamily: "cairo, sans-serif",
+                                fontWeight: "700", flex: 1, transition: "all 0.2s"
+                            }} onClick={async () => {
+                                await contextDeleteProduct(productToDelete.id);
+                                setProductToDelete(null);
+                            }}
+                            onMouseEnter={(e) => { e.target.style.backgroundColor = "#ff4d4d" }}
+                            onMouseLeave={(e) => { e.target.style.backgroundColor = "#e05555" }}>
+                                تأكيد الحذف
+                            </button>
+                            <button style={{
+                                backgroundColor: "#1e1e1e", color: "#aaa", padding: "10px 24px",
+                                border: "1px solid #333", borderRadius: "8px", cursor: "pointer", fontFamily: "cairo, sans-serif",
+                                fontWeight: "600", flex: 1, transition: "all 0.2s"
+                            }} onClick={() => setProductToDelete(null)}
+                            onMouseEnter={(e) => { e.target.style.backgroundColor = "#2a2a2a"; e.target.style.color = "#fff" }}
+                            onMouseLeave={(e) => { e.target.style.backgroundColor = "#1e1e1e"; e.target.style.color = "#aaa" }}>
+                                إلغاء
                             </button>
                         </div>
                     </div>

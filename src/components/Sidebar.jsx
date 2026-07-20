@@ -39,6 +39,8 @@ function Sidebar({ onLogout }) {
         fetchUser();
     }, []);
 
+    useEffect 
+
     // Normalise field names — Xano may return snake_case or camelCase
     const displayUserName = user?.fullName || user?.full_name || user?.name || user?.userName || user?.user_name || null;
     const displayBusinessName = user?.businessName || user?.business_name || null;
@@ -273,6 +275,7 @@ function Sidebar({ onLogout }) {
             {showExport && <Export onClose={() => setShowExport(false)} />}
             {showPlans && <Plans onClose={() => setShowPlans(false)} />}
             {showAccSettings && <AccSetting onClose={() => setShowAccSettings(false)} />}
+            
         </>
     );
 }
