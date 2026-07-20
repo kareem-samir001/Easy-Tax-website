@@ -15,6 +15,7 @@ import ProfitLoss from './pages/ProfitLoss'
 
 import { TijaraProvider } from './context/TijaraContext'
 import { Toaster } from 'react-hot-toast'
+import CompleteProfile from './auth/CompleteProfile'
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
@@ -77,6 +78,22 @@ function App() {
     }
   }
 
+  // Safety guard: if loggedIn is true but userData is somehow null, reset to login
+  if (loggedIn && !userData) {
+    setLoggedIn(false);
+    return null;
+  }
+
+  // Show onboarding if the user logged in via Google and hasn't set userName / businessName yet
+  // Uses .trim() to treat empty strings the same as null (Xano may return "" for unset fields)
+  const hasUserName = !!(userData?.userName?.trim() || userData?.user_name?.trim());
+  const hasBusinessName = !!(userData?.businessName?.trim() || userData?.business_name?.trim());
+  const needsOnboarding = loggedIn && (!hasUserName || !hasBusinessName);
+
+  if (needsOnboarding) {
+    return <CompleteProfile userData={userData} setUserData={setUserData} />
+  }
+
   return (
     <TijaraProvider>
       <Toaster position="bottom-right" />
@@ -85,7 +102,7 @@ function App() {
           <Route path="/" element={
             <div style={{ display: 'flex', direction: 'rtl', width: '100%', height: '100vh', backgroundColor: "#161616" }}>
               <div className="no-print">
-                <Sidebar onLogout={() => {
+                <Sidebar userData={userData} onLogout={() => {
                   localStorage.removeItem('authToken');
                   setUserData(null);
                   setLoggedIn(false);

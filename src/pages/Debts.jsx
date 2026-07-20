@@ -407,9 +407,10 @@ export default function Debts() {
         ) : (
           unpaid.map((d) => {
             const extra = getContact(d.id);
-            // Payments now come directly from Xano's payments field
-            const payments = d.payments || [];
-            const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+            // Payments now come directly from Xano's payments field.
+            // Guard against null/non-array — Xano may return null on a brand-new debt.
+            const payments = Array.isArray(d.payments) ? d.payments : [];
+            const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
             // d.amount is the current remaining balance; original = remaining + all paid
             const original = d.amount + totalPaid;
             const rem = d.amount;
@@ -563,8 +564,8 @@ export default function Debts() {
               <br />
               المبلغ المتبقي الحالي: {fmt(collectingDebt.amount || 0)} جنيه
               {(() => {
-                const prevPayments = collectingDebt.payments || [];
-                const totalPreviouslyPaid = prevPayments.reduce((sum, p) => sum + p.amount, 0);
+                const prevPayments = Array.isArray(collectingDebt.payments) ? collectingDebt.payments : [];
+                const totalPreviouslyPaid = prevPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
                 const originalAmount = collectingDebt.amount + totalPreviouslyPaid;
                 if (totalPreviouslyPaid > 0) {
                   return (

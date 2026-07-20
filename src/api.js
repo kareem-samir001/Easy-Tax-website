@@ -93,6 +93,14 @@ export const authAPI = {
     }),
 
   me: () => fetchWithAuth(`${API_AUTH}/auth/me`, { method: "GET" }),
+
+  // Send Google access_token to Xano for server-side verification via Google's userinfo endpoint
+  // Xano calls https://www.googleapis.com/oauth2/v3/userinfo to verify, finds/creates user, returns authToken
+  googleOAuth: (access_token) =>
+    fetchWithAuth(`${API_AUTH}/auth/google-oauth`, {
+      method: "POST",
+      body: JSON.stringify({ access_token }),
+    }),
 };
 
 export const dataAPI = {

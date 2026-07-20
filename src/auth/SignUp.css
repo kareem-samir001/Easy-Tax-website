@@ -192,33 +192,33 @@
 }
 
 .social-buttons-row {
-  display: flex;
-  gap: 10px;
   margin-bottom: 16px;
 }
 
 .social-button {
-  flex: 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   background: #161616;
   border: 1px solid #2a2a2a;
   border-radius: 10px;
-  padding: 11px;
+  padding: 13px;
   color: #f2f2f2;
   font-family: "cairo", sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
-.social-button:hover {
-  background: #1e1e1e;
-  border-color: #3a3a3a;
+.google-button:hover {
+  background: #1a1a1a;
+  border-color: #4285F444;
+  box-shadow: 0 0 0 3px #4285F411;
 }
+
 
 .divider-row {
   display: flex;

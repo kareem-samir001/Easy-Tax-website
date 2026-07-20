@@ -42,8 +42,9 @@ function Sidebar({ onLogout }) {
     useEffect 
 
     // Normalise field names — Xano may return snake_case or camelCase
-    const displayUserName = user?.fullName || user?.full_name || user?.name || user?.userName || user?.user_name || null;
+    const displayUserName = user?.userName || user?.user_name || null;
     const displayBusinessName = user?.businessName || user?.business_name || null;
+    const displayPicture = user?.picture || null;
     // avatarLetter: username first → business name → placeholder
     const avatarLetter = (
         displayUserName?.charAt(0) ||
@@ -166,15 +167,28 @@ function Sidebar({ onLogout }) {
                                 borderBottom: "1px solid #1f1f1f",
                                 display: "flex", alignItems: "center", gap: "10px"
                             }}>
-                                <div style={{
-                                    width: "38px", height: "38px", borderRadius: "50%",
-                                    background: "linear-gradient(135deg, #22c97a22, #22c97a44)",
-                                    border: "1px solid #22c97a55",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: "15px", fontWeight: "800", color: "#22c97a", flexShrink: 0
-                                }}>
-                                    {avatarLetter}
-                                </div>
+                                {displayPicture ? (
+                                    <img
+                                        src={displayPicture}
+                                        alt="avatar"
+                                        referrerPolicy="no-referrer"
+                                        style={{
+                                            width: "38px", height: "38px", borderRadius: "50%",
+                                            objectFit: "cover", flexShrink: 0,
+                                            border: "1px solid #22c97a55"
+                                        }}
+                                    />
+                                ) : (
+                                    <div style={{
+                                        width: "38px", height: "38px", borderRadius: "50%",
+                                        background: "linear-gradient(135deg, #22c97a22, #22c97a44)",
+                                        border: "1px solid #22c97a55",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        fontSize: "15px", fontWeight: "800", color: "#22c97a", flexShrink: 0
+                                    }}>
+                                        {avatarLetter}
+                                    </div>
+                                )}
                                 <div style={{ textAlign: "right", overflow: "hidden" }}>
                                     <div style={{ fontSize: "13px", fontWeight: "700", color: "#f2f2f2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                         {isLoading ? "جاري التحميل..." : (displayUserName || "المستخدم")}
@@ -231,14 +245,27 @@ function Sidebar({ onLogout }) {
                         onMouseEnter={e => e.currentTarget.style.background = "#1a1a1a"}
                         onMouseLeave={e => e.currentTarget.style.background = showSettings ? "#1a1a1a" : "transparent"}
                     >
-                        <div style={{
-                            width: "32px", height: "32px", borderRadius: "50%",
-                            background: "#22c97a22", border: "1px solid #22c97a44",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: "12px", fontWeight: "800", color: "#22c97a", flexShrink: 0
-                        }}>
-                            {avatarLetter}
-                        </div>
+                        {displayPicture ? (
+                            <img
+                                src={displayPicture}
+                                alt="avatar"
+                                referrerPolicy="no-referrer"
+                                style={{
+                                    width: "32px", height: "32px", borderRadius: "50%",
+                                    objectFit: "cover", flexShrink: 0,
+                                    border: "1px solid #22c97a44"
+                                }}
+                            />
+                        ) : (
+                            <div style={{
+                                width: "32px", height: "32px", borderRadius: "50%",
+                                background: "#22c97a22", border: "1px solid #22c97a44",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: "12px", fontWeight: "800", color: "#22c97a", flexShrink: 0
+                            }}>
+                                {avatarLetter}
+                            </div>
+                        )}
                         <div style={{ flex: 1, textAlign: "right", overflow: "hidden" }}>
                             <div style={{ fontSize: "14px", fontWeight: "700", color: "#f2f2f2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {isLoading ? "جاري التحميل..." : (displayUserName || "المستخدم")}
